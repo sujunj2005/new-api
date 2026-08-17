@@ -16,10 +16,21 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 import { SignUp } from '@/features/auth/sign-up'
+import { getStatus } from '@/lib/api'
 
 export const Route = createFileRoute('/(auth)/sign-up')({
+  beforeLoad: async () => {
+    // 注册关闭（系统设置 RegisterEnabled=false）或自用模式开启时隐藏注册页面
+    const status = await getStatus().catch(() => null)
+    if (
+      status?.self_use_mode_enabled === true ||
+      status?.register_enabled === false
+    ) {
+      throw redirect({ to: '/sign-in' })
+    }
+  },
   component: SignUp,
 })

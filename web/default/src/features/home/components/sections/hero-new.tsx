@@ -143,6 +143,12 @@ export function HeroNew({ isAuthenticated = false }: HeroNewProps) {
       </div>
 
       <p
+        className='landing-animate-fade-up absolute bottom-10 left-0 right-0 text-center text-[11px] text-landing-subtle opacity-0'
+        style={{ animationDelay: '550ms' }}
+      >
+        contact: jintong@trustharbor.group
+      </p>
+      <p
         className='landing-animate-fade-up absolute bottom-6 left-0 right-0 text-center text-[11px] text-landing-subtle opacity-0'
         style={{ animationDelay: '600ms' }}
       >
