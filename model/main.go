@@ -299,6 +299,14 @@ func migrateDB() error {
 		&SystemTaskLock{},
 		&CasbinRule{},
 		&AuthzRole{},
+		// Phase 2 分销商佣金与归属（契约 01-CONTRACT.md §2.3/§3.1-3.3 冻结）
+		&AttributionChange{},
+		&CommissionFlow{},
+		&CommissionRate{},
+		&CommissionRateHistory{},
+		&CommissionStatement{},
+		&CommissionStatementItem{},
+		&StatementAdjustment{},
 	)
 	if err != nil {
 		return err
