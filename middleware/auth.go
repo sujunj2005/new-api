@@ -153,6 +153,11 @@ func authHelper(c *gin.Context, minRole int) {
 	c.Set("group", session.Get("group"))
 	c.Set("user_group", session.Get("group"))
 	c.Set("use_access_token", useAccessToken)
+	// 分销商标记：authHelper 阈值放行后注入，供下游 handler/中间件按需精确判断。
+	// 注意：is_distributor 仅表示当前 role==RoleDistributorUser，不替代 DistributorAuth
+	// 的精确门控——admin/root 虽能走过 authHelper(c, RoleDistributorUser) 阈值（5≥1），
+	// 但 is_distributor=false；真正进入分销商视角须经过 DistributorAuth 二次精确校验。
+	c.Set("is_distributor", role.(int) == common.RoleDistributorUser)
 
 	// 管理/root 写操作审计兜底：内聚在鉴权链路里，保证任何经过 AdminAuth/RootAuth
 	// 的写接口都会自动留痕（无需在路由上单独挂审计中间件，避免漏挂）。
@@ -193,6 +198,30 @@ func AdminAuth() func(c *gin.Context) {
 func RootAuth() func(c *gin.Context) {
 	return func(c *gin.Context) {
 		authHelper(c, common.RoleRootUser)
+	}
+}
+
+// DistributorAuth 是分销商侧接口的服务端真防线（契约 §2.2）。
+// 语义：authHelper(c, RoleDistributorUser) 先做阈值校验（5≥1 保留基础用户能力、
+// 5<10 天然进不了 admin 面板），随后追加精确匹配 c.GetInt("role")==RoleDistributorUser——
+// admin(10)/root(100) 虽过阈值但被精确校验拦截，不进分销商视角（避免 ID 语义混乱）。
+// 所有 /api/distributor/* 与 /api/commission/* 的分销商侧接口（B4/B5/B6/A9/A10/A11/A12）
+// 必须挂此中间件，而非用 minRole=5 的纯阈值。
+func DistributorAuth() func(c *gin.Context) {
+	return func(c *gin.Context) {
+		authHelper(c, common.RoleDistributorUser)
+		if c.IsAborted() {
+			return
+		}
+		if c.GetInt("role") != common.RoleDistributorUser {
+			c.JSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"message": common.TranslateMessage(c, i18n.MsgAuthInsufficientPrivilege),
+			})
+			c.Abort()
+			return
+		}
+		c.Next()
 	}
 }
 

@@ -1,6 +1,8 @@
 package router
 
 import (
+	"net/http"
+
 	"github.com/QuantumNous/new-api/controller"
 	"github.com/QuantumNous/new-api/middleware"
 
@@ -227,6 +229,63 @@ func SetApiRouter(router *gin.Engine) {
 		}
 		registerChannelRoutes(apiRouter)
 		registerAuthzRoutes(apiRouter)
+
+		// ========================================================================
+		// Phase 2: 分销商角色与客户归属地基地基路由骨架
+		// 占位 handler 返回 501 Not Implemented，02-03 起填充真实 controller。
+		// 权限模型（契约 §2.2 + §4.2/4.3）：
+		//   - 分销商侧（B4/B5/B6/A9/A10/A11/A12）→ DistributorAuth 精确匹配 role==5
+		//   - 管理员侧（A1/A2/A3/A4/A5/A6/A7/A8/B3）→ AdminAuth 阈值 minRole=10
+		//   - 超管侧（A7/A8/B2）→ RootAuth 阈值 minRole=100
+		// ========================================================================
+		notImplemented := func(c *gin.Context) {
+			c.JSON(http.StatusNotImplemented, gin.H{
+				"success": false,
+				"message": "not implemented",
+			})
+		}
+
+		// B1 自助补绑（UserAuth，挂 selfRoute 同级，便于复用 session 用户身份）
+		apiRouter.POST("/user/aff_rebind", middleware.UserAuth(), notImplemented)
+
+		// B 域：归属审计（B2 RootAuth / B3 AdminAuth）
+		attributionRoute := apiRouter.Group("/attribution")
+		{
+			attributionRoute.POST("/bind", middleware.RootAuth(), notImplemented)     // B2 POST /api/attribution/bind 管理员补绑
+			attributionRoute.GET("/changes", middleware.AdminAuth(), notImplemented)  // B3 GET /api/attribution/changes 归属审计查询
+		}
+
+		// B 域：分销商侧接口（B4/B5/B6，DistributorAuth 精确匹配）
+		distributorRoute := apiRouter.Group("/distributor")
+		distributorRoute.Use(middleware.DistributorAuth())
+		{
+			distributorRoute.GET("/customers", notImplemented)                  // B4 GET /api/distributor/customers 客户列表
+			distributorRoute.GET("/customers/:id/topups", notImplemented)       // B5 GET /api/distributor/customers/:id/topups 单客户充值明细
+			distributorRoute.GET("/profile", notImplemented)                    // B6 GET /api/distributor/profile 分销商自己的资料
+		}
+
+		// A 域：佣金接口（分销商侧 DistributorAuth + 管理员侧 AdminAuth/RootAuth 共用前缀）
+		commissionRoute := apiRouter.Group("/commission")
+		{
+			// 分销商侧（A9/A10/A11/A12）——精确匹配 role==5
+			commissionRoute.GET("/dashboard", middleware.DistributorAuth(), notImplemented)                       // A9 GET /api/commission/dashboard
+			commissionRoute.GET("/statements/self", middleware.DistributorAuth(), notImplemented)                 // A10 GET /api/commission/statements/self
+			commissionRoute.GET("/statements/self/:id/items", middleware.DistributorAuth(), notImplemented)       // A11 GET /api/commission/statements/self/:id/items
+			commissionRoute.GET("/current", middleware.DistributorAuth(), notImplemented)                         // A12 GET /api/commission/current
+
+			// 管理员侧（A1/A2/A3/A4/A5/A6）——阈值 minRole=10
+			commissionRoute.GET("/rates", middleware.AdminAuth(), notImplemented)                       // A1 GET /api/commission/rates
+			commissionRoute.PUT("/rates/:distributorId", middleware.AdminAuth(), notImplemented)       // A2 PUT /api/commission/rates/:distributorId
+			commissionRoute.GET("/rates/:distributorId/history", middleware.AdminAuth(), notImplemented) // A3 GET /api/commission/rates/:distributorId/history
+			commissionRoute.GET("/statements", middleware.AdminAuth(), notImplemented)                 // A4 GET /api/commission/statements
+			commissionRoute.GET("/statements/:id", middleware.AdminAuth(), notImplemented)             // A5 GET /api/commission/statements/:id
+			commissionRoute.GET("/statements/:id/items", middleware.AdminAuth(), notImplemented)       // A6 GET /api/commission/statements/:id/items
+
+			// 超管侧（A7/A8）——阈值 minRole=100
+			commissionRoute.POST("/flows/manual", middleware.RootAuth(), notImplemented)               // A7 POST /api/commission/flows/manual
+			commissionRoute.POST("/statements/:id/adjustments", middleware.RootAuth(), notImplemented) // A8 POST /api/commission/statements/:id/adjustments
+		}
+
 		tokenRoute := apiRouter.Group("/token")
 		tokenRoute.Use(middleware.UserAuth())
 		{
