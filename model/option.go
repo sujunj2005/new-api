@@ -176,6 +176,12 @@ func InitOptionMap() {
 	common.OptionMap["AutomaticRetryStatusCodes"] = operation_setting.AutomaticRetryStatusCodesToString()
 	common.OptionMap["ExposeRatioEnabled"] = strconv.FormatBool(ratio_setting.IsExposeRatioEnabled())
 
+	// Phase 2 分销商佣金与归属设置键（契约 01-CONTRACT.md §2.4 + §3.4 冻结，Pattern 4 热更新三件套）
+	common.OptionMap["CommissionEnabled"] = strconv.FormatBool(common.CommissionEnabled)
+	common.OptionMap["CommissionPayoutDay"] = strconv.Itoa(common.CommissionPayoutDay)
+	common.OptionMap["AffRebindWindowMode"] = common.AffRebindWindowMode
+	common.OptionMap["AffRebindWindowDays"] = strconv.Itoa(common.AffRebindWindowDays)
+
 	// 自动添加所有注册的模型配置
 	modelConfigs := config.GlobalConfig.ExportAllConfigs()
 	for k, v := range modelConfigs {
@@ -364,6 +370,8 @@ func updateOptionMap(key string, value string) (err error) {
 			setting.DefaultUseAutoGroup = boolValue
 		case "ExposeRatioEnabled":
 			ratio_setting.SetExposeRatioEnabled(boolValue)
+		case "CommissionEnabled":
+			common.CommissionEnabled = boolValue
 		}
 	}
 	switch key {
@@ -572,6 +580,15 @@ func updateOptionMap(key string, value string) (err error) {
 		// WaffoPayMethods is read directly from OptionMap via setting.GetWaffoPayMethods().
 		// The value is already stored in OptionMap at the top of this function (line: common.OptionMap[key] = value).
 		// No additional in-memory variable to update.
+	// Phase 2 分销商佣金与归属设置键（契约 01-CONTRACT.md §2.4 + §3.4 冻结，Pattern 4 热更新 case）
+	case "CommissionPayoutDay":
+		intValue, _ := strconv.Atoi(value)
+		common.CommissionPayoutDay = intValue
+	case "AffRebindWindowMode":
+		common.AffRebindWindowMode = value
+	case "AffRebindWindowDays":
+		intValue, _ := strconv.Atoi(value)
+		common.AffRebindWindowDays = intValue
 	}
 	return err
 }
