@@ -109,7 +109,10 @@ func TestListRates(t *testing.T) {
 	require.Equal(t, dA.Id, items[0].DistributorId, "distributor_id ASC")
 	require.Equal(t, "listdist_a", items[0].Username, "A1 username 冗余（LEFT JOIN users）")
 	require.Equal(t, 1000, items[0].RateBp)
-	require.Equal(t, dA.Id, items[0].Id)
+	// CommissionRate.Id 是比例表自身主键（非 users 主键）——对照实际 rate 行
+	var rateA CommissionRate
+	require.NoError(t, DB.Where("distributor_id = ?", dA.Id).First(&rateA).Error)
+	require.Equal(t, rateA.Id, items[0].Id, "嵌入结构体扁平扫描携带正确主键")
 	require.Equal(t, dB.Id, items[1].DistributorId)
 	require.Equal(t, "listdist_b", items[1].Username)
 	require.Equal(t, 500, items[1].RateBp)
