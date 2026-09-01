@@ -331,6 +331,35 @@ func UpdateOption(c *gin.Context) {
 			})
 			return
 		}
+	// Phase 2 分销商佣金与归属设置键值域校验（契约 §2.4 + §3.4）。
+	// 非法值返回 400，防止运行时全局变量被写入越界值导致窗口计算/出账日逻辑异常。
+	case "CommissionPayoutDay":
+		payoutDay, parseErr := strconv.Atoi(option.Value.(string))
+		if parseErr != nil || payoutDay < 8 || payoutDay > 31 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "payout day must be 8-31",
+			})
+			return
+		}
+	case "AffRebindWindowDays":
+		windowDays, parseErr := strconv.Atoi(option.Value.(string))
+		if parseErr != nil || windowDays < 1 || windowDays > 365 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "rebind window days must be 1-365",
+			})
+			return
+		}
+	case "AffRebindWindowMode":
+		mode := option.Value.(string)
+		if mode != "days" && mode != "unlimited" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": "mode must be days or unlimited",
+			})
+			return
+		}
 	}
 	err = model.UpdateOption(option.Key, option.Value.(string))
 	if err != nil {
