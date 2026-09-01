@@ -231,8 +231,9 @@ func SetApiRouter(router *gin.Engine) {
 		registerAuthzRoutes(apiRouter)
 
 		// ========================================================================
-		// Phase 2: 分销商角色与客户归属地基地基路由骨架
-		// 占位 handler 返回 501 Not Implemented，02-03 起填充真实 controller。
+		// Phase 2: 分销商角色与客户归属地基地基路由
+		// B 域（B1-B6）：02-03 已替换为真实 controller（本 plan 交付）。
+		// A 域（A1-A12）：Phase 3/4/6 交付，当前保持 notImplemented 占位。
 		// 权限模型（契约 §2.2 + §4.2/4.3）：
 		//   - 分销商侧（B4/B5/B6/A9/A10/A11/A12）→ DistributorAuth 精确匹配 role==5
 		//   - 管理员侧（A1/A2/A3/A4/A5/A6/A7/A8/B3）→ AdminAuth 阈值 minRole=10
@@ -246,22 +247,22 @@ func SetApiRouter(router *gin.Engine) {
 		}
 
 		// B1 自助补绑（UserAuth，挂 selfRoute 同级，便于复用 session 用户身份）
-		apiRouter.POST("/user/aff_rebind", middleware.UserAuth(), notImplemented)
+		apiRouter.POST("/user/aff_rebind", middleware.UserAuth(), controller.AffRebind)
 
 		// B 域：归属审计（B2 RootAuth / B3 AdminAuth）
 		attributionRoute := apiRouter.Group("/attribution")
 		{
-			attributionRoute.POST("/bind", middleware.RootAuth(), notImplemented)     // B2 POST /api/attribution/bind 管理员补绑
-			attributionRoute.GET("/changes", middleware.AdminAuth(), notImplemented)  // B3 GET /api/attribution/changes 归属审计查询
+			attributionRoute.POST("/bind", middleware.RootAuth(), controller.AdminBindAttribution)     // B2 POST /api/attribution/bind 管理员补绑
+			attributionRoute.GET("/changes", middleware.AdminAuth(), controller.GetAttributionChanges) // B3 GET /api/attribution/changes 归属审计查询
 		}
 
 		// B 域：分销商侧接口（B4/B5/B6，DistributorAuth 精确匹配）
 		distributorRoute := apiRouter.Group("/distributor")
 		distributorRoute.Use(middleware.DistributorAuth())
 		{
-			distributorRoute.GET("/customers", notImplemented)                  // B4 GET /api/distributor/customers 客户列表
-			distributorRoute.GET("/customers/:id/topups", notImplemented)       // B5 GET /api/distributor/customers/:id/topups 单客户充值明细
-			distributorRoute.GET("/profile", notImplemented)                    // B6 GET /api/distributor/profile 分销商自己的资料
+			distributorRoute.GET("/customers", controller.GetDistributorCustomers)            // B4 GET /api/distributor/customers 客户列表
+			distributorRoute.GET("/customers/:id/topups", controller.GetDistributorCustomerTopups) // B5 GET /api/distributor/customers/:id/topups 单客户充值明细
+			distributorRoute.GET("/profile", controller.GetDistributorProfile)                 // B6 GET /api/distributor/profile 分销商自己的资料
 		}
 
 		// A 域：佣金接口（分销商侧 DistributorAuth + 管理员侧 AdminAuth/RootAuth 共用前缀）
