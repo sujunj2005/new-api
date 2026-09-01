@@ -288,6 +288,11 @@ func SetApiRouter(router *gin.Engine) {
 			commissionRoute.POST("/statements/:id/adjustments", middleware.RootAuth(), notImplemented) // A8 POST /api/commission/statements/:id/adjustments
 		}
 
+		// A13 POST /api/topup/:tradeNo/void 充值单作废（契约附录 C1，RootAuth）
+		// 注意：必须注册在 apiRouter 层级——adminRoute 是 userRoute.Group("/")（前缀 /api/user），
+		// 放入该组会把路径破坏成 /api/user/topup/...，违反契约 C1 冻结路径
+		apiRouter.POST("/topup/:tradeNo/void", middleware.RootAuth(), controller.VoidTopUp)
+
 		tokenRoute := apiRouter.Group("/token")
 		tokenRoute.Use(middleware.UserAuth())
 		{
