@@ -19,20 +19,18 @@ import (
 
 // setupDistributorTestDB initializes an in-memory SQLite database for DistributorAuth tests.
 // 模式参照 controller/token_test.go setupTokenControllerTestDB + 02-RESEARCH.md Code Examples.
-// Pitfall 8: SQLite 无 FOR UPDATE，SetMaxOpenConns(1) 防 "database is locked"。
+// SQLite shared cache + _busy_timeout 防 "database is locked"，不限制连接数避免事务嵌套死锁。
 func setupDistributorTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	common.SetDatabaseTypes(common.DatabaseTypeSQLite, common.DatabaseTypeSQLite)
 	common.RedisEnabled = false
 	common.BatchUpdateEnabled = false
-	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", strings.ReplaceAll(t.Name(), "/", "_"))
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared&_busy_timeout=30000", strings.ReplaceAll(t.Name(), "/", "_"))
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	require.NoError(t, err)
 	model.DB = db
 	model.LOG_DB = db
-	sqlDB, _ := db.DB()
-	sqlDB.SetMaxOpenConns(1)
 	t.Cleanup(func() {
 		sqlDB, _ := db.DB()
 		_ = sqlDB.Close()

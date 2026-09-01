@@ -19,18 +19,17 @@ import (
 )
 
 // setupAttributionTestDB 初始化归属管理测试 DB（参照 token_test.go setupTokenControllerTestDB 模式）。
-// SQLite 内存库 + SetMaxOpenConns(1) 避免 "database is locked"（Pitfall 8）。
+// SQLite 内存库（shared cache + _busy_timeout 防 "database is locked"，不限制连接数避免事务嵌套死锁）。
 func setupAttributionTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	common.SetDatabaseTypes(common.DatabaseTypeSQLite, common.DatabaseTypeSQLite)
 	common.RedisEnabled = false
 	common.BatchUpdateEnabled = false
-	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", strings.ReplaceAll(t.Name(), "/", "_"))
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared&_busy_timeout=30000", strings.ReplaceAll(t.Name(), "/", "_"))
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	require.NoError(t, err)
-	sqlDB, _ := db.DB()
-	sqlDB.SetMaxOpenConns(1)
+	// 不限制 MaxOpenConns：事务内嵌套查询需要多连接，SetMaxOpenConns(1) 会死锁
 	model.DB = db
 	model.LOG_DB = db
 	require.NoError(t, db.AutoMigrate(&model.User{}, &model.AttributionChange{}))
@@ -112,8 +111,7 @@ func TestRegisterAff(t *testing.T) {
 	require.Equal(t, distributor.Id, newCustomer.InviterId, "InviterId should equal distributor id after register with aff_code")
 }
 
-// TestAffRebind 骨架（完整五分支断言在 02-05 实现）。
-// 五分支：码无效 / 码非分销商 / 超窗口 / 已有归属 / 成功。
-func TestAffRebind(t *testing.T) {
-	t.Skip("完整五分支断言在 02-05 实现：码无效 / 码非分销商 / 超窗口 / 已有归属 / 成功")
-}
+// TestAffRebind 六分支完整实现在 attribution_test.go（02-05 Task 2）:
+//   - TestAffRebind_WindowPass / WindowExpired / AlreadyBound / UnlimitedMode / InvalidCode / NotDistributor
+// 契约 §4.2 B1 + §5 幂等与并发约定（条件 UPDATE inviter_id=0 + 窗口校验先行）。
+// 02-03 此处为 t.Skip 骨架，02-05 已迁移至 attribution_test.go 完整实现。
