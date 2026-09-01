@@ -233,7 +233,8 @@ func SetApiRouter(router *gin.Engine) {
 		// ========================================================================
 		// Phase 2: 分销商角色与客户归属地基地基路由
 		// B 域（B1-B6）：02-03 已替换为真实 controller（本 plan 交付）。
-		// A 域（A1-A12）：Phase 3/4/6 交付，当前保持 notImplemented 占位。
+		// A 域：A1-A3 已由 03-02 替换为真实 controller；A4-A8/A9-A12 保持
+		// notImplemented 占位（Phase 4/6 范围）。
 		// 权限模型（契约 §2.2 + §4.2/4.3）：
 		//   - 分销商侧（B4/B5/B6/A9/A10/A11/A12）→ DistributorAuth 精确匹配 role==5
 		//   - 管理员侧（A1/A2/A3/A4/A5/A6/A7/A8/B3）→ AdminAuth 阈值 minRole=10
@@ -275,9 +276,9 @@ func SetApiRouter(router *gin.Engine) {
 			commissionRoute.GET("/current", middleware.DistributorAuth(), notImplemented)                         // A12 GET /api/commission/current
 
 			// 管理员侧（A1/A2/A3/A4/A5/A6）——阈值 minRole=10
-			commissionRoute.GET("/rates", middleware.AdminAuth(), notImplemented)                       // A1 GET /api/commission/rates
-			commissionRoute.PUT("/rates/:distributorId", middleware.AdminAuth(), notImplemented)       // A2 PUT /api/commission/rates/:distributorId
-			commissionRoute.GET("/rates/:distributorId/history", middleware.AdminAuth(), notImplemented) // A3 GET /api/commission/rates/:distributorId/history
+			commissionRoute.GET("/rates", middleware.AdminAuth(), controller.GetCommissionRates)                             // A1 GET /api/commission/rates 比例列表
+			commissionRoute.PUT("/rates/:distributorId", middleware.AdminAuth(), controller.SetCommissionRate)               // A2 PUT /api/commission/rates/:distributorId 设置比例
+			commissionRoute.GET("/rates/:distributorId/history", middleware.AdminAuth(), controller.GetCommissionRateHistory) // A3 GET /api/commission/rates/:distributorId/history 变更历史
 			commissionRoute.GET("/statements", middleware.AdminAuth(), notImplemented)                 // A4 GET /api/commission/statements
 			commissionRoute.GET("/statements/:id", middleware.AdminAuth(), notImplemented)             // A5 GET /api/commission/statements/:id
 			commissionRoute.GET("/statements/:id/items", middleware.AdminAuth(), notImplemented)       // A6 GET /api/commission/statements/:id/items
