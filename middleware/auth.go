@@ -34,7 +34,20 @@ func validUserInfo(username string, role int) bool {
 	return true
 }
 
-func authHelper(c *gin.Context, minRole int) {
+// authenticateUser performs session/access-token authentication, threshold
+// check, and context setup (c.Set). It does NOT call c.Next() and does NOT
+// start admin audit — callers are responsible for invoking c.Next() and the
+// audit lifecycle.
+//
+// On authentication/authorization failure it writes an error response and
+// calls c.Abort(), so callers MUST check c.IsAborted() before proceeding.
+//
+// Split from authHelper so that DistributorAuth can perform its precise-match
+// check (role == RoleDistributorUser) BEFORE c.Next() runs the downstream
+// handler. Without this split, authHelper's c.Next() would execute the handler
+// before DistributorAuth's 403 could be written — a Rule 1 bug surfaced by the
+// 02-04 DistributorAuth test suite (admin/root returned 200 instead of 403).
+func authenticateUser(c *gin.Context, minRole int) {
 	session := sessions.Default(c)
 	username := session.Get("username")
 	role := session.Get("role")
@@ -158,7 +171,18 @@ func authHelper(c *gin.Context, minRole int) {
 	// 的精确门控——admin/root 虽能走过 authHelper(c, RoleDistributorUser) 阈值（5≥1），
 	// 但 is_distributor=false；真正进入分销商视角须经过 DistributorAuth 二次精确校验。
 	c.Set("is_distributor", role.(int) == common.RoleDistributorUser)
+}
 
+// authHelper authenticates the user (via authenticateUser) and, on success,
+// runs the downstream handler chain with admin-audit lifecycle when minRole
+// indicates an admin/root endpoint. UserAuth/AdminAuth/RootAuth use this
+// wrapper unchanged; DistributorAuth calls authenticateUser directly so it can
+// insert its precise-match check before c.Next() (see DistributorAuth comment).
+func authHelper(c *gin.Context, minRole int) {
+	authenticateUser(c, minRole)
+	if c.IsAborted() {
+		return
+	}
 	// 管理/root 写操作审计兜底：内聚在鉴权链路里，保证任何经过 AdminAuth/RootAuth
 	// 的写接口都会自动留痕（无需在路由上单独挂审计中间件，避免漏挂）。
 	// handler 内手动埋点者会设置 ContextKeyAuditLogged，finishAdminAudit 据此跳过。
@@ -209,7 +233,10 @@ func RootAuth() func(c *gin.Context) {
 // 必须挂此中间件，而非用 minRole=5 的纯阈值。
 func DistributorAuth() func(c *gin.Context) {
 	return func(c *gin.Context) {
-		authHelper(c, common.RoleDistributorUser)
+		// 调 authenticateUser（不调 c.Next()）而非 authHelper，使精确匹配检查
+		// 能在 handler 执行前生效。若用 authHelper，其末尾的 c.Next() 会先跑完
+		// handler，导致 admin/root 的 403 无法写入（response 已落盘）——Rule 1 bug。
+		authenticateUser(c, common.RoleDistributorUser)
 		if c.IsAborted() {
 			return
 		}
