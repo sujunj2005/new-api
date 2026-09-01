@@ -459,6 +459,13 @@ func GetSelf(c *gin.Context) {
 	// 获取用户设置并提取sidebar_modules
 	userSetting := user.GetSetting()
 
+	// M2（契约 §4.1 + 张力点 #5 向后兼容）：追加 attribution 对象。
+	// 不动现有顶层 inviter_id 字段（前端其他处可继续读顶层字段）；
+	// 前端补绑入口消费 attribution.rebind_available 显示/隐藏（ATTR-05）。
+	// rebind_available = inviter_id==0 && CanRebind(created_at, mode, days)
+	inviterId := user.InviterId
+	rebindAvailable := inviterId == 0 && model.CanRebind(user.CreatedAt, common.AffRebindWindowMode, common.AffRebindWindowDays)
+
 	// 构建响应数据，包含用户信息和权限
 	responseData := map[string]interface{}{
 		"id":                user.Id,
@@ -471,7 +478,7 @@ func GetSelf(c *gin.Context) {
 		"discord_id":        user.DiscordId,
 		"oidc_id":           user.OidcId,
 		"wechat_id":         user.WeChatId,
-		"telegram_id":       user.TelegramId,
+		"telegram_id":      user.TelegramId,
 		"group":             user.Group,
 		"quota":             user.Quota,
 		"used_quota":        user.UsedQuota,
@@ -486,6 +493,10 @@ func GetSelf(c *gin.Context) {
 		"stripe_customer":   user.StripeCustomer,
 		"sidebar_modules":   userSetting.SidebarModules, // 正确提取sidebar_modules字段
 		"permissions":       permissions,                // 新增权限字段
+		"attribution": gin.H{
+			"inviter_id":       inviterId,
+			"rebind_available": rebindAvailable,
+		},
 	}
 
 	c.JSON(http.StatusOK, gin.H{
