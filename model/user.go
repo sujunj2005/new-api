@@ -557,6 +557,13 @@ func (user *User) EditWithTx(tx *gorm.DB, updatePassword bool) error {
 	if updatePassword {
 		updates["password"] = newUser.Password
 	}
+	// M1（契约 §4.1）：role 变更时加入 updates 白名单。
+	// `!= 0` 守卫是安全关键——UpdateSelf 等调用方构造 cleanUser 时不含 Role（Go 零值 0），
+	// 若无条件加入会把 role 误写为 0（Guest）。UpdateUser 在调用前已将 0 占位回写为 originRole，
+	// 故此处只需判非零即正确覆盖 role 变更与无变更（同值 no-op）两种场景（Pitfall 3）。
+	if newUser.Role != 0 {
+		updates["role"] = newUser.Role
+	}
 
 	tx.First(&user, user.Id)
 	if err = tx.Model(user).Updates(updates).Error; err != nil {

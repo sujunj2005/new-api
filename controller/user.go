@@ -320,6 +320,14 @@ func canManageTargetRole(myRole int, targetRole int) bool {
 	return myRole == common.RoleRootUser || myRole > targetRole
 }
 
+// isDistributorRoleValid 判断角色值是否为合法的可设置值（契约 §4.1 M1 + §6）。
+// 合法值集合 {1,5,10,100}；不含 Guest=0——0 走"不修改占位"路径，由调用方处理。
+// DB 层 users.role 是 int 列无 enum 约束，唯一写入口 UpdateUser 的应用层校验是防线。
+func isDistributorRoleValid(role int) bool {
+	return role == common.RoleCommonUser || role == common.RoleDistributorUser ||
+		role == common.RoleAdminUser || role == common.RoleRootUser
+}
+
 func GetUser(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -643,13 +651,28 @@ func UpdateUser(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	if updatedUser.Role != common.RoleGuestUser && updatedUser.Role != originUser.Role {
+	// M1 role 变更路径（契约 §4.1 M1 + F3）：
+	//   - 0=不修改占位（保留现有语义，Pitfall 2），回写 originRole
+	//   - 合法值 {1,5,10,100}，非法值 {2,7,...} 返回 400（DB 层 int 列无 enum 约束，防线只在应用层，契约 §6）
+	//   - 变更时须 canManageTargetRole 双向校验（提升与降级均须 myRole > targetRole 或 root，张力点 #1）
+	//   - canManageTargetRole 现有公式 myRole>targetRole 天然覆盖 role=5：admin(10)>distributor(5) 成立
+	newRole := updatedUser.Role
+	originRole := originUser.Role
+	myRole := c.GetInt("role")
+	if newRole == common.RoleGuestUser {
+		// 0=不修改占位，回写 originRole 保持 EditWithTx 行为一致
+		updatedUser.Role = originRole
+	} else if !isDistributorRoleValid(newRole) {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
 	}
-	updatedUser.Role = originUser.Role
-	myRole := c.GetInt("role")
-	if !canManageTargetRole(myRole, originUser.Role) {
+	// 管理员须能管理目标用户的当前角色（无论是否变更都需校验）
+	if !canManageTargetRole(myRole, originRole) {
+		common.ApiErrorI18n(c, i18n.MsgUserNoPermissionHigherLevel)
+		return
+	}
+	// 若 role 变更，还须能管理目标角色——双向校验（admin 可管理 distributor=5，但同级不可动）
+	if updatedUser.Role != originRole && !canManageTargetRole(myRole, updatedUser.Role) {
 		common.ApiErrorI18n(c, i18n.MsgUserNoPermissionHigherLevel)
 		return
 	}
@@ -677,6 +700,12 @@ func UpdateUser(c *gin.Context) {
 	}
 	if err := model.InvalidateUserCache(updatedUser.Id); err != nil {
 		common.SysLog(fmt.Sprintf("failed to invalidate user cache for user %d: %s", updatedUser.Id, err.Error()))
+	}
+	// 契约 F3：角色变更后须同时失效令牌缓存。
+	// UserBase 缓存不含 Role（user_cache.go:17-25），AccessToken 通道（ValidateAccessToken）直查 DB 即时生效；
+	// session 通道读登录快照，需重新登录才生效（设计非缺陷，ROADMAP Phase 2 验收标准 1 一致）。
+	if err := model.InvalidateUserTokensCache(updatedUser.Id); err != nil {
+		common.SysLog(fmt.Sprintf("failed to invalidate tokens cache for user %d: %s", updatedUser.Id, err.Error()))
 	}
 	recordManageAuditFor(c, updatedUser.Id, "user.update", map[string]interface{}{
 		"username": originUser.Username,
