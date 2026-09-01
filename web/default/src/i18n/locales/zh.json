@@ -2975,7 +2975,7 @@
     "Open menu": "打开菜单",
     "Open release": "打开版本",
     "Open source": "开源",
-    "Open Source": "开源项目",
+    "Open Source": "开源",
     "Open the io.net console API Keys page": "打开 io.net 控制台 API 密钥页面",
     "Open theme settings": "打开主题设置",
     "Open weights": "开放权重",
@@ -4981,7 +4981,6 @@
     "© {{year}} {{siteName}} · Secure AI Gateway": "© {{year}} {{siteName}} · 安全可信的 AI 统一网关",
     "Get Started Free": "开始使用",
     "One API, All AI Models": "一个 API，接入所有 AI",
-    "Open Source": "开源",
     "Secure & Trusted Unified AI Gateway": "安全可信的统一 AI 网关",
     "Sign Up Free": "免费注册",
     "Supported Providers": "已接入供应商",
@@ -4989,6 +4988,17 @@
     "Unified Billing": "统一计费",
     "Unified Management": "统一管理",
     "View Docs": "查看文档",
-    "Zoom": "缩放"
+    "Zoom": "缩放",
+    "Attribution": "归属绑定",
+    "Bind Distributor": "绑定分销商",
+    "Invitation code": "邀请码",
+    "Enter distributor invitation code": "请输入分销商邀请码",
+    "Bind your account to a distributor using an invitation code. This can only be done once.": "填写分销商邀请码完成归属绑定，绑定后不可自行更改。",
+    "Bound to distributor ID: {{id}}": "已绑定，分销商 ID: {{id}}",
+    "Rebind window has expired. Please contact the administrator.": "补绑窗口已过，请联系管理员",
+    "Please enter the invitation code": "请输入邀请码",
+    "Rebind successful": "绑定成功",
+    "Rebind failed": "绑定失败",
+    "Invalid invitation code or the code is not from a distributor": "邀请码无效或该邀请码不是分销商"
   }
 }

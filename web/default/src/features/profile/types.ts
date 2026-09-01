@@ -65,6 +65,8 @@ export interface UserProfile {
   aff_history_quota: number
   /** Invite user ID */
   invite_user_id?: number
+  /** Attribution info (契约 §4.1 M2)：归属信息，rebind_available 由服务端计算，前端只读 */
+  attribution?: { inviter_id: number; rebind_available: boolean }
   /** Account creation timestamp */
   created_time: number
   /** User settings (JSON string) */

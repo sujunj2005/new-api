@@ -61,6 +61,21 @@ export async function updateUserSettings(
 }
 
 /**
+ * Self-rebind attribution to a distributor (契约 §4.2 B1)
+ * POST /api/user/aff_rebind
+ * 错误由调用方映射：400 码无效/非分销商/已归属，403 超窗口（skip 全局 toast，避免双重提示）
+ */
+export async function postAffRebind(
+  data: { aff_code: string }
+): Promise<ApiResponse> {
+  const res = await api.post('/api/user/aff_rebind', data, {
+    skipBusinessError: true,
+    skipErrorHandler: true,
+  })
+  return res.data
+}
+
+/**
  * Update interface language preference
  */
 export async function updateUserLanguage(

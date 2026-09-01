@@ -20,7 +20,7 @@ import i18next from 'i18next'
 import { useState, useEffect, useCallback } from 'react'
 import { toast } from 'sonner'
 
-import { getUserProfile, updateUserProfile, updateUserSettings } from '../api'
+import { getUserProfile, postAffRebind, updateUserProfile, updateUserSettings } from '../api'
 import type {
   UserProfile,
   UpdateUserRequest,
@@ -119,6 +119,46 @@ export function useProfile() {
     [refreshProfile]
   )
 
+  // Self-rebind attribution to a distributor (契约 §4.2 B1：POST /api/user/aff_rebind)
+  // 错误映射（单一 toast 责任方，postAffRebind 已 skip 全局拦截器提示）：
+  //   403 → 超窗口；400 → 码无效/非分销商/已归属；其余 → 通用失败
+  const affRebind = useCallback(
+    async (data: { aff_code: string }): Promise<boolean> => {
+      try {
+        setUpdating(true)
+        const response = await postAffRebind(data)
+
+        if (response.success) {
+          toast.success(i18next.t('Rebind successful'))
+          await refreshProfile() // 刷新 profile，attribution.rebind_available 更新
+          return true
+        }
+
+        toast.error(response.message || i18next.t('Rebind failed'))
+        return false
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to rebind aff:', error)
+        const status = (
+          error as { response?: { status?: number } } | undefined
+        )?.response?.status
+        if (status === 403) {
+          toast.error(i18next.t('Rebind window has expired. Please contact the administrator.'))
+        } else if (status === 400) {
+          toast.error(
+            i18next.t('Invalid invitation code or the code is not from a distributor')
+          )
+        } else {
+          toast.error(i18next.t('Rebind failed'))
+        }
+        return false
+      } finally {
+        setUpdating(false)
+      }
+    },
+    [refreshProfile]
+  )
+
   // Initial fetch
   useEffect(() => {
     fetchProfile()
@@ -132,5 +172,6 @@ export function useProfile() {
     refreshProfile,
     updateProfile,
     updateSettings,
+    affRebind,
   }
 }

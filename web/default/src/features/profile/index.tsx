@@ -35,7 +35,7 @@ import { TwoFACard } from './components/two-fa-card'
 import { useProfile } from './hooks'
 
 export function Profile() {
-  const { profile, loading, refreshProfile } = useProfile()
+  const { profile, loading, refreshProfile, affRebind } = useProfile()
   const { status } = useStatus()
   const permissions = useAuthStore((s) => s.auth.user?.permissions)
 
@@ -61,6 +61,7 @@ export function Profile() {
                   profile={profile}
                   loading={loading}
                   onProfileUpdate={refreshProfile}
+                  affRebind={affRebind}
                 />
                 <LanguagePreferencesCard
                   profile={profile}

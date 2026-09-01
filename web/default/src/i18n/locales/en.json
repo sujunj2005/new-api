@@ -4981,7 +4981,6 @@
     "© {{year}} {{siteName}} · Secure AI Gateway": "© {{year}} {{siteName}} · Secure AI Gateway",
     "Get Started Free": "Get Started Free",
     "One API, All AI Models": "One API, All AI Models",
-    "Open Source": "Open Source",
     "Secure & Trusted Unified AI Gateway": "Secure & Trusted Unified AI Gateway",
     "Sign Up Free": "Sign Up Free",
     "Supported Providers": "Supported Providers",
@@ -4989,6 +4988,17 @@
     "Unified Billing": "Unified Billing",
     "Unified Management": "Unified Management",
     "View Docs": "View Docs",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Attribution": "Attribution",
+    "Bind Distributor": "Bind Distributor",
+    "Invitation code": "Invitation code",
+    "Enter distributor invitation code": "Enter distributor invitation code",
+    "Bind your account to a distributor using an invitation code. This can only be done once.": "Bind your account to a distributor using an invitation code. This can only be done once.",
+    "Bound to distributor ID: {{id}}": "Bound to distributor ID: {{id}}",
+    "Rebind window has expired. Please contact the administrator.": "Rebind window has expired. Please contact the administrator.",
+    "Please enter the invitation code": "Please enter the invitation code",
+    "Rebind successful": "Rebind successful",
+    "Rebind failed": "Rebind failed",
+    "Invalid invitation code or the code is not from a distributor": "Invalid invitation code or the code is not from a distributor"
   }
 }
