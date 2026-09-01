@@ -29,6 +29,7 @@ import {
   Radio,
   ServerCog,
   Settings,
+  Store,
   Ticket,
   User,
   Users,
@@ -112,6 +113,14 @@ export function useSidebarData(): SidebarData {
             title: t('Profile'),
             url: '/profile',
             icon: User,
+          },
+          {
+            title: t('Distributor Console'),
+            url: '/distributor',
+            icon: Store,
+            // 张力点 #3：精确匹配 role===5，非 requiredRole 阈值——
+            // admin(10)/root(100) 不见死入口（服务端 DistributorAuth 是真防线）
+            distributorOnly: true,
           },
         ],
       },

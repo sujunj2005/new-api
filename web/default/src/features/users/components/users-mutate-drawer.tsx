@@ -155,6 +155,12 @@ export function UsersMutateDrawer({
   const selectedRole = form.watch('role')
   const canEditAdminPermissions = currentUser?.role === ROLE.SUPER_ADMIN
   const targetIsAdmin = (selectedRole ?? currentRow?.role ?? 0) >= ROLE.ADMIN
+  // M1 前端等价：编辑模式开放 role 控件——当前登录者 role > 目标 role 或为 root 时可改角色
+  // 契约 §4.1 M1 + 张力点 #3：canManageTargetRole 前端等价，后端真防线在 UpdateUser
+  const canManageRole =
+    !isUpdate ||
+    currentUser?.role === ROLE.SUPER_ADMIN ||
+    (currentUser?.role ?? 0) > (currentRow?.role ?? 0)
 
   const onSubmit = async (data: UserFormValues) => {
     if (!isUpdate) {
@@ -265,7 +271,7 @@ export function UsersMutateDrawer({
                   )}
                 />
 
-                {!isUpdate && (
+                {canManageRole && (
                   <FormField
                     control={form.control}
                     name='role'
@@ -275,6 +281,7 @@ export function UsersMutateDrawer({
                         <Select
                           items={[
                             { value: '1', label: t('Common User') },
+                            { value: '5', label: t('Distributor') },
                             { value: '10', label: t('Admin') },
                           ]}
                           onValueChange={(value) =>
@@ -291,6 +298,9 @@ export function UsersMutateDrawer({
                             <SelectGroup>
                               <SelectItem value='1'>
                                 {t('Common User')}
+                              </SelectItem>
+                              <SelectItem value='5'>
+                                {t('Distributor')}
                               </SelectItem>
                               <SelectItem value='10'>{t('Admin')}</SelectItem>
                             </SelectGroup>
