@@ -38,12 +38,16 @@ func setupCommissionTestDB(t *testing.T) *gorm.DB {
 	require.NoError(t, err)
 	// 注意：此处禁止 SetMaxOpenConns(1)——RecordCommissionTx 运行在调用方的
 	// DB.Transaction 事务内，嵌套查询需要第二个连接，单连接会死锁（02-04 教训）
+	origDB, origLogDB := DB, LOG_DB
 	DB = db
 	LOG_DB = db
 	require.NoError(t, db.AutoMigrate(
 		&User{}, &TopUp{}, &CommissionFlow{}, &CommissionRate{}, &CommissionRateHistory{}, &Log{},
 	))
 	t.Cleanup(func() {
+		// 先恢复全局 DB 再关闭本测试库：后续测试（如 TestCommissionOptions_*）
+		// 依赖共享 TestMain 的 DB，不得拿到已关闭的连接
+		DB, LOG_DB = origDB, origLogDB
 		sqlDB, _ := db.DB()
 		_ = sqlDB.Close()
 	})

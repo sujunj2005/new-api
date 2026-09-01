@@ -146,6 +146,11 @@ func Recharge(referenceId string, customerId string, callerIp string) (err error
 			return err
 		}
 
+		// 佣金记账挂载（契约 §3.5：事务内置 success 后、return nil 前，同生共死）
+		if err := RecordCommissionTx(tx, topUp); err != nil {
+			return err // 真实 DB 故障 → 整个充值事务回滚（契约 §5 冻结语义）
+		}
+
 		return nil
 	})
 
@@ -375,6 +380,11 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 			return err
 		}
 
+		// 佣金记账挂载（契约 §3.5：事务内置 success 后、return nil 前，同生共死）
+		if err := RecordCommissionTx(tx, topUp); err != nil {
+			return err // 真实 DB 故障 → 整个充值事务回滚（契约 §5 冻结语义）
+		}
+
 		userId = topUp.UserId
 		payMoney = topUp.Money
 		paymentMethod = topUp.PaymentMethod
@@ -451,6 +461,11 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 			return err
 		}
 
+		// 佣金记账挂载（契约 §3.5：事务内置 success 后、return nil 前，同生共死）
+		if err := RecordCommissionTx(tx, topUp); err != nil {
+			return err // 真实 DB 故障 → 整个充值事务回滚（契约 §5 冻结语义）
+		}
+
 		return nil
 	})
 
@@ -512,6 +527,11 @@ func RechargeWaffo(tradeNo string, callerIp string) (err error) {
 			return err
 		}
 
+		// 佣金记账挂载（契约 §3.5：事务内置 success 后、return nil 前，同生共死）
+		if err := RecordCommissionTx(tx, topUp); err != nil {
+			return err // 真实 DB 故障 → 整个充值事务回滚（契约 §5 冻结语义）
+		}
+
 		return nil
 	})
 
@@ -571,6 +591,11 @@ func RechargeWaffoPancake(tradeNo string) (err error) {
 
 		if err := tx.Model(&User{}).Where("id = ?", topUp.UserId).Update("quota", gorm.Expr("quota + ?", quotaToAdd)).Error; err != nil {
 			return err
+		}
+
+		// 佣金记账挂载（契约 §3.5：事务内置 success 后、return nil 前，同生共死）
+		if err := RecordCommissionTx(tx, topUp); err != nil {
+			return err // 真实 DB 故障 → 整个充值事务回滚（契约 §5 冻结语义）
 		}
 
 		return nil

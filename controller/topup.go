@@ -19,6 +19,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
 )
 
 func GetTopUpInfo(c *gin.Context) {
@@ -388,11 +389,23 @@ func EpayNotify(c *gin.Context) {
 				topUp.PaymentMethod = verifyInfo.Type
 			}
 			topUp.Status = common.TopUpStatusSuccess
+			// C2 补写（契约附录 C2）：CompleteTime 必须在 Update() 之前赋值才能随订单一并落库，
+			// 消除 "1970-01" 错账期（佣金 Period 据 CompleteTime 计算）
+			topUp.CompleteTime = common.GetTimestamp()
 			err := topUp.Update()
 			if err != nil {
 				logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 更新充值订单失败 trade_no=%s user_id=%d client_ip=%s error=%q topup=%q", topUp.TradeNo, topUp.UserId, c.ClientIP(), err.Error(), common.GetJsonString(topUp)))
 				return
 			}
+
+			// 佣金记账挂载（契约 §3.5 回调型：独立事务，紧贴订单置 success；
+			// 失败仅记日志不阻断充值——与下方 IncreaseUserQuota 失败处理惯例一致，不放大现状非原子窗口）
+			if cErr := model.DB.Transaction(func(tx *gorm.DB) error {
+				return model.RecordCommissionTx(tx, topUp)
+			}); cErr != nil {
+				logger.LogError(c.Request.Context(), fmt.Sprintf("易支付 佣金记账失败（不阻断充值）trade_no=%s user_id=%d error=%q", topUp.TradeNo, topUp.UserId, cErr.Error()))
+			}
+
 			//user, _ := model.GetUserById(topUp.UserId, false)
 			//user.Quota += topUp.Amount * 500000
 			dAmount := decimal.NewFromInt(int64(topUp.Amount))
