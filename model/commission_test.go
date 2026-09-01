@@ -235,6 +235,10 @@ func TestRecordCommissionTx(t *testing.T) {
 			wantMoneyCents:  1,
 			wantRateBp:      333,
 			wantAmountCents: 0,
+			wantPeriod:      "2026-08",
+			mutate: func(t *testing.T, f *commissionFixture) {
+				f.TopUp.CompleteTime = time.Date(2026, 8, 15, 12, 0, 0, 0, time.Local).Unix()
+			},
 		},
 		{
 			// 月末 23:59:59（本地时区）→ 归当月（契约 C3）
