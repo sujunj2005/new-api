@@ -25,6 +25,7 @@ import { PaymentSettingsSection } from '../integrations/payment-settings-section
 import { RatioSettingsCard } from '../models/ratio-settings-card'
 import type { BillingSettings } from '../types'
 import { createSectionRegistry } from '../utils/section-registry'
+import { CommissionSection } from './sections/CommissionSection'
 
 const getModelDefaults = (settings: BillingSettings) => ({
   ModelPrice: settings.ModelPrice,
@@ -196,6 +197,20 @@ const BILLING_SECTIONS = [
           enabled: settings['checkin_setting.enabled'],
           minQuota: settings['checkin_setting.min_quota'],
           maxQuota: settings['checkin_setting.max_quota'],
+        }}
+      />
+    ),
+  },
+  {
+    id: 'commission',
+    titleKey: 'Commission',
+    build: (settings: BillingSettings) => (
+      <CommissionSection
+        defaultValues={{
+          CommissionEnabled: settings.CommissionEnabled,
+          CommissionPayoutDay: settings.CommissionPayoutDay,
+          AffRebindWindowMode: settings.AffRebindWindowMode,
+          AffRebindWindowDays: settings.AffRebindWindowDays,
         }}
       />
     ),

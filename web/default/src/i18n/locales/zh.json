@@ -4999,6 +4999,18 @@
     "Please enter the invitation code": "请输入邀请码",
     "Rebind successful": "绑定成功",
     "Rebind failed": "绑定失败",
-    "Invalid invitation code or the code is not from a distributor": "邀请码无效或该邀请码不是分销商"
+    "Invalid invitation code or the code is not from a distributor": "邀请码无效或该邀请码不是分销商",
+    "Commission": "分佣设置",
+    "Commission Enabled": "分佣总开关",
+    "Enable commission settlement for distributors": "启用分销商返佣，关闭后停止产生新佣金流水",
+    "Commission Payout Day": "月度出账日",
+    "Day of the month for issuing statements, between 8 and 31": "每月出账日，取值 8~31；当月天数不足时取最后一天",
+    "Rebind Window Mode": "补绑窗口模式",
+    "Days": "按天",
+    "Whether unbound customers may self-rebind: within days after registration, or anytime": "未绑定客户的自助补绑方式：注册后限天数内，或不限时间",
+    "Rebind Window Days": "补绑窗口天数",
+    "Only applies in days mode": "仅在按天模式下生效",
+    "Days in which an unbound customer can self-rebind after registration, between 1 and 365": "客户注册后允许自助补绑的天数，取值 1~365",
+    "Save commission settings": "保存分佣设置"
   }
 }

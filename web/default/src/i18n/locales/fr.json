@@ -4999,6 +4999,18 @@
     "Please enter the invitation code": "Veuillez saisir le code d’invitation",
     "Rebind successful": "Re-connexion réussie",
     "Rebind failed": "Échec de la re-connexion",
-    "Invalid invitation code or the code is not from a distributor": "Code d’invitation invalide ou ce code n’appartient pas à un distributeur"
+    "Invalid invitation code or the code is not from a distributor": "Code d’invitation invalide ou ce code n’appartient pas à un distributeur",
+    "Commission": "Commission",
+    "Commission Enabled": "Commission activée",
+    "Enable commission settlement for distributors": "Activer le règlement des commissions pour les distributeurs",
+    "Commission Payout Day": "Jour de paiement des commissions",
+    "Day of the month for issuing statements, between 8 and 31": "Jour du mois d’émission des relevés, entre 8 et 31",
+    "Rebind Window Mode": "Mode de fenêtre de re-connexion",
+    "Days": "Jours",
+    "Whether unbound customers may self-rebind: within days after registration, or anytime": "Si les clients non liés peuvent se re-lier : dans les jours suivant l’inscription, ou à tout moment",
+    "Rebind Window Days": "Jours de la fenêtre de re-connexion",
+    "Only applies in days mode": "S’applique uniquement en mode jours",
+    "Days in which an unbound customer can self-rebind after registration, between 1 and 365": "Jours pendant lesquels un client non lié peut se re-lier après l’inscription, entre 1 et 365",
+    "Save commission settings": "Enregistrer les paramètres de commission"
   }
 }
