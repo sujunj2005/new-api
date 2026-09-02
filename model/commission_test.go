@@ -43,6 +43,8 @@ func setupCommissionTestDB(t *testing.T) *gorm.DB {
 	LOG_DB = db
 	require.NoError(t, db.AutoMigrate(
 		&User{}, &TopUp{}, &CommissionFlow{}, &CommissionRate{}, &CommissionRateHistory{}, &Log{},
+		// Phase 4 出账引擎三表（Wave 0 补齐）：缺表时 statement 测试必 panic（04-RESEARCH Pitfall 7）
+		&CommissionStatement{}, &CommissionStatementItem{}, &StatementAdjustment{},
 	))
 	t.Cleanup(func() {
 		// 先恢复全局 DB 再关闭本测试库：后续测试（如 TestCommissionOptions_*）
@@ -60,6 +62,83 @@ func withCommissionEnabled(t *testing.T, enabled bool) {
 	orig := common.CommissionEnabled
 	common.CommissionEnabled = enabled
 	t.Cleanup(func() { common.CommissionEnabled = orig })
+}
+
+// withCommissionPayoutDay 临时设置出账日并在测试结束时恢复（t.Cleanup，
+// 照抄 withCommissionEnabled 模式；供出账/调度类测试使用，04-02/04-03 可复用）。
+func withCommissionPayoutDay(t *testing.T, n int) {
+	t.Helper()
+	orig := common.CommissionPayoutDay
+	common.CommissionPayoutDay = n
+	t.Cleanup(func() { common.CommissionPayoutDay = orig })
+}
+
+// seedFlowTopUpOpts seedFlow 可选同步建 TopUp 行的字段（statement_items 明细快照来源，STMT-02）。
+type seedFlowTopUpOpts struct {
+	paymentMethod   string
+	paymentProvider string
+	completeTime    int64
+}
+
+// seedFlowOpts seedFlow 的构造选项。
+type seedFlowOpts struct {
+	distributorId   int
+	customerId      int
+	flowType        string // "" = commission
+	tradeNo         string // "" = 人工流水（manual_credit/manual_debit，BillingNo 自动生成）
+	topupMoneyCents int64
+	rateBp          int
+	amountCents     int64              // 正负均可（reversal/manual_debit 为负）
+	status          string             // "" = pending
+	period          string             // 必传："2026-08"（出账测试不依赖充值链路，直接铺账期）
+	withTopUp       *seedFlowTopUpOpts // 可选：同步建 TopUp 行（明细快照 join 源）
+}
+
+// seedFlow 绕过记账入口直插 CommissionFlow 行（契约 §3.1 冻结字段）。
+// 传 withTopUp（且 tradeNo 非空）时同步建一行 TopUp 供明细快照 join；
+// 返回建好的流水（含 DB 回填的 Id/CreatedAt）。
+func seedFlow(t *testing.T, opts seedFlowOpts) CommissionFlow {
+	t.Helper()
+	require.NotEmpty(t, opts.period, "period is required for seeded flows")
+	seq := commissionTestSeq.Add(1)
+	flowType := opts.flowType
+	if flowType == "" {
+		flowType = CommissionFlowCommission
+	}
+	status := opts.status
+	if status == "" {
+		status = CommissionFlowPending
+	}
+	billingNo := opts.tradeNo
+	if billingNo == "" {
+		// 人工流水无充值单：BillingNo=MAN-{ts}-{rand}（契约 §3.1.1），测试用 seq 保证唯一
+		billingNo = fmt.Sprintf("MAN-TEST%d", seq)
+	}
+	if opts.withTopUp != nil && opts.tradeNo != "" {
+		require.NoError(t, DB.Create(&TopUp{
+			UserId:          opts.customerId,
+			TradeNo:         opts.tradeNo,
+			PaymentMethod:   opts.withTopUp.paymentMethod,
+			PaymentProvider: opts.withTopUp.paymentProvider,
+			CreateTime:      opts.withTopUp.completeTime,
+			CompleteTime:    opts.withTopUp.completeTime,
+			Status:          common.TopUpStatusSuccess,
+		}).Error)
+	}
+	f := CommissionFlow{
+		BillingNo:       billingNo,
+		FlowType:        flowType,
+		TradeNo:         opts.tradeNo,
+		CustomerId:      opts.customerId,
+		DistributorId:   opts.distributorId,
+		TopupMoneyCents: opts.topupMoneyCents,
+		RateBp:          opts.rateBp,
+		AmountCents:     opts.amountCents,
+		Status:          status,
+		Period:          opts.period,
+	}
+	require.NoError(t, DB.Create(&f).Error)
+	return f
 }
 
 // commissionFixture 一键分销链路种子：分销商 + 客户（inviter_id 归属）+ 比例行 + 充值单。
