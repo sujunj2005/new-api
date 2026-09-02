@@ -83,7 +83,7 @@ func TestGenerateDueStatements(t *testing.T) {
 	fA2 := seedFlow(t, seedFlowOpts{
 		distributorId: distA.Id, customerId: custA.Id, flowType: CommissionFlowReversal, tradeNo: "TGEN-A1",
 		topupMoneyCents: 10000, rateBp: 1000, amountCents: -300, period: stmtPeriod,
-		withTopUp: &seedFlowTopUpOpts{paymentMethod: "stripe", paymentProvider: "stripe", completeTime: completeA},
+		// 不传 withTopUp：reversal trade_no 照抄原单，join fA1 已建的 TopUp 行（同单冲销唯一）
 	})
 	fA3 := seedFlow(t, seedFlowOpts{
 		distributorId: distA.Id, customerId: custA.Id, tradeNo: "TGEN-A3",
