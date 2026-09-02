@@ -165,6 +165,12 @@ export function useSidebarData(): SidebarData {
             activeUrls: ['/system-settings'],
             icon: Settings,
           },
+          {
+            title: t('Statements'),
+            url: '/commission-statements/list',
+            activeUrls: ['/commission-statements'],
+            icon: FileText,
+          },
         ],
       },
     ],
