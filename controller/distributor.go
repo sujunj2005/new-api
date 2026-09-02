@@ -25,7 +25,7 @@ type distributorCustomerItem struct {
 // GetDistributorCustomers B4 分销商客户列表（DistributorAuth）。
 // 服务端强制 WHERE inviter_id = 当前分销商（ROLE-02，不依赖前端隔离）。
 // total_topup_cents 从 TopUp.Money 聚合（SUM*100，F4 佣金基数语义）。
-// total_commission_cents 返回 0 占位（A 域流水 Phase 3 前联调点，Open Questions #3 确认）。
+// total_commission_cents 由佣金流水金额聚合接线（契约附录 D5.3；正负相抵，reversal 为负数）。
 func GetDistributorCustomers(c *gin.Context) {
 	distributorId := c.GetInt("id")
 	pageInfo := common.GetPageQuery(c)
@@ -48,6 +48,29 @@ func GetDistributorCustomers(c *gin.Context) {
 		return
 	}
 
+	// B4 佣金聚合接线（D5.3）：本页客户批量聚合佣金金额，
+	// WHERE distributor_id = 当前分销商 双谓词限定防跨分销商读取（T-04-02-03）；
+	// flows 金额列本就 int64 cents，直取无精度问题。
+	customerIds := make([]int, 0, len(users))
+	for _, u := range users {
+		customerIds = append(customerIds, u.Id)
+	}
+	commissionByCustomer := make(map[int]int64, len(users))
+	if len(customerIds) > 0 {
+		var rows []struct {
+			CustomerId int
+			Total      int64
+		}
+		model.DB.Model(&model.CommissionFlow{}).
+			Select("customer_id, COALESCE(SUM(amount_cents),0) AS total").
+			Where("distributor_id = ? AND customer_id IN ?", distributorId, customerIds).
+			Group("customer_id").
+			Scan(&rows)
+		for _, r := range rows {
+			commissionByCustomer[r.CustomerId] = r.Total
+		}
+	}
+
 	// 逐客户聚合 total_topup_cents（SUM(money)*100，F4 佣金基数=实付金额）
 	items := make([]distributorCustomerItem, 0, len(users))
 	for _, u := range users {
@@ -62,7 +85,7 @@ func GetDistributorCustomers(c *gin.Context) {
 			DisplayName:          u.DisplayName,
 			CreatedAt:            u.CreatedAt,
 			TotalTopupCents:      int64(math.Round(totalMoney * 100)),
-			TotalCommissionCents: 0, // 占位：A 域流水 Phase 3 前联调点
+			TotalCommissionCents: commissionByCustomer[u.Id], // 聚合佣金金额直取，无流水为 0
 		})
 	}
 

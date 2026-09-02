@@ -279,9 +279,10 @@ func SetApiRouter(router *gin.Engine) {
 			commissionRoute.GET("/rates", middleware.AdminAuth(), controller.GetCommissionRates)                             // A1 GET /api/commission/rates 比例列表
 			commissionRoute.PUT("/rates/:distributorId", middleware.AdminAuth(), controller.SetCommissionRate)               // A2 PUT /api/commission/rates/:distributorId 设置比例
 			commissionRoute.GET("/rates/:distributorId/history", middleware.AdminAuth(), controller.GetCommissionRateHistory) // A3 GET /api/commission/rates/:distributorId/history 变更历史
-			commissionRoute.GET("/statements", middleware.AdminAuth(), notImplemented)                 // A4 GET /api/commission/statements
-			commissionRoute.GET("/statements/:id", middleware.AdminAuth(), notImplemented)             // A5 GET /api/commission/statements/:id
-			commissionRoute.GET("/statements/:id/items", middleware.AdminAuth(), notImplemented)       // A6 GET /api/commission/statements/:id/items
+			commissionRoute.GET("/statements", middleware.AdminAuth(), controller.GetCommissionStatements)                // A4 GET /api/commission/statements 管理员账单列表
+			commissionRoute.GET("/statements/summary", middleware.AdminAuth(), controller.GetCommissionStatementSummary)  // A14 GET /api/commission/statements/summary 跨分销商汇总（契约附录 D3；静态段优先于 :id）
+			commissionRoute.GET("/statements/:id", middleware.AdminAuth(), controller.GetCommissionStatement)             // A5 GET /api/commission/statements/:id 账单详情
+			commissionRoute.GET("/statements/:id/items", middleware.AdminAuth(), controller.GetCommissionStatementItems)  // A6 GET /api/commission/statements/:id/items 账单明细
 
 			// 超管侧（A7/A8）——阈值 minRole=100
 			commissionRoute.POST("/flows/manual", middleware.RootAuth(), notImplemented)               // A7 POST /api/commission/flows/manual
