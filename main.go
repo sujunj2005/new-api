@@ -121,6 +121,10 @@ func main() {
 	// Subscription quota reset task (daily/weekly/monthly/custom)
 	service.StartSubscriptionQuotaResetTask()
 
+	// Commission monthly statement generation task (contract 01-CONTRACT.md
+	// appendix D2: subscription_reset mode + day>=clamp(payoutDay) catch-up)
+	service.StartCommissionStatementTask()
+
 	// Report this process as a system instance so the System Info page can show
 	// all currently alive nodes in multi-instance deployments.
 	service.StartSystemInstanceReporter()

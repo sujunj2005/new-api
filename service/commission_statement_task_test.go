@@ -142,7 +142,7 @@ func TestStatementTaskSchedule(t *testing.T) {
 	t.Run("before_payout_day_no_statement", func(t *testing.T) {
 		setupStatementServiceTestDB(t)
 		withPayoutDay(t, 8)
-		dist, flow := seedDistributorWithFlow(t)
+		_, flow := seedDistributorWithFlow(t)
 
 		runStatementGenerationOnce(time.Date(2026, 9, 1, 8, 0, 0, 0, time.Local))
 
@@ -189,7 +189,7 @@ func TestStatementTaskSchedule(t *testing.T) {
 	t.Run("idempotent_across_same_month_reruns", func(t *testing.T) {
 		setupStatementServiceTestDB(t)
 		withPayoutDay(t, 8)
-		seedDistributorWithFlow(t)
+		_, _ = seedDistributorWithFlow(t)
 
 		// 同月内多次调用（9/8、9/15、9/20）：仅首次产生账单，其余 no-op 零重复
 		runStatementGenerationOnce(time.Date(2026, 9, 8, 0, 1, 0, 0, time.Local))
