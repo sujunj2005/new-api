@@ -1,6 +1,7 @@
 package model
 
 import (
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -343,14 +344,27 @@ func TestStatementAdjustmentTx(t *testing.T) {
 		dist := seedStatementUser(t, common.RoleDistributorUser)
 		stmt := seedAdjustStatement(t, dist.Id, "2026-08", StatementPayable, 10000, 0)
 
-		// 2 goroutine 并发各 +100：statement 行 FOR UPDATE 串行化，先读后算累计，无丢失更新
+		// 2 goroutine 并发各 +100：statement 行 FOR UPDATE 串行化，先读后算累计，无丢失更新。
+		// SQLite shared-cache 驱动在真并发写下偶发表锁竞态（SQLITE_LOCKED 262，不受
+		// busy_timeout 管理，MySQL/PG 无此驱动层问题）：写失败即事务回滚零写入，重试安全自愈。
+		callAdjust := func() error {
+			var lastErr error
+			for attempt := 0; attempt < 5; attempt++ {
+				lastErr = CreateStatementAdjustmentTx(stmt.Id, 100, "并发调整", 7)
+				if lastErr == nil || !strings.Contains(lastErr.Error(), "table is locked") {
+					return lastErr
+				}
+				time.Sleep(20 * time.Millisecond)
+			}
+			return lastErr
+		}
 		var wg sync.WaitGroup
 		errs := make(chan error, 2)
 		for i := 0; i < 2; i++ {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				errs <- CreateStatementAdjustmentTx(stmt.Id, 100, "并发调整", 7)
+				errs <- callAdjust()
 			}()
 		}
 		wg.Wait()
@@ -391,4 +405,173 @@ func assertNoAdjustment(t *testing.T, statementId int64) {
 	var stmt CommissionStatement
 	require.NoError(t, DB.First(&stmt, statementId).Error)
 	require.Zero(t, stmt.AdjustedCents, "rejected branch must not touch adjusted_cents")
+}
+
+// TestNextPeriodSweep D1「下期账单纳入上期调整分录」全机制联测（附录 D1 + ROADMAP 验收 7，
+// 消费 04-01 GenerateDueStatements 参数化接缝）：
+//  1. settled 账单差错 → A7 补录（period=当前月）→ 下期出账 sweep 自动纳入下期账单
+//     （items 恰含 manual 行、PaymentMethod="manual" D5.2、流水翻 available 回填）
+//  2. payable 调整单不投影下期（settle 已含 delta，再投影即双重计算）
+//  3. reversal 跨月隔离回归：settled 账单对应充值单作废拒绝（ErrAlreadyStatemented，
+//     历史不涂改，03-03 语义），差错唯一出口 = A7 下期体现
+func TestNextPeriodSweep(t *testing.T) {
+	setupCommissionTestDB(t)
+
+	dist1 := seedStatementUser(t, common.RoleDistributorUser) // settled 差错 → A7 路径
+	dist2 := seedStatementUser(t, common.RoleDistributorUser) // payable 调整单不投影
+	cust := seedStatementUser(t, common.RoleCommonUser)
+
+	// 铺底：dist1 上期账单已结清；dist2 上期账单应付
+	seedAdjustStatement(t, dist1.Id, "2026-08", StatementSettled, 1000, 0)
+	s2 := seedAdjustStatement(t, dist2.Id, "2026-08", StatementPayable, 2000, 0)
+	seedAdjustItem(t, s2.Id, "TSWEEP-2", 2000)
+
+	// ① settled 差错路径：A7 补录 → period=当前月、status=pending
+	require.NoError(t, CreateManualFlow(dist1.Id, CommissionFlowManualCredit, 500, "已结清账单差错补录", 7))
+	var manualFlow CommissionFlow
+	require.NoError(t, DB.Where("distributor_id = ? AND flow_type = ?", dist1.Id, CommissionFlowManualCredit).First(&manualFlow).Error)
+	require.Equal(t, CommissionFlowPending, manualFlow.Status)
+	require.Equal(t, time.Now().Format("2006-01"), manualFlow.Period, "补录账期 = 记录时刻当前月（D1）")
+
+	// ② payable 账单调整单（同事务累计，按调整后金额结算）
+	require.NoError(t, CreateStatementAdjustmentTx(s2.Id, -50, "差额补正", 7))
+
+	// ③ 下期出账：参数化 now = 下月任意日 → 出账期 = 上自然月 ≥ 补录账期 → sweep 纳入
+	next := time.Now().AddDate(0, 1, 0)
+	n, err := GenerateDueStatements(next)
+	require.NoError(t, err)
+	require.Equal(t, 1, n, "仅 dist1（有新 pending 流水）出下期账单")
+
+	// 下期账单恰含 manual 流水一行（验收 7 活体证明）
+	// （dist1 名下共 2 张：铺底 settled + 新出账单；按期标签取新账单，First 主键序会取到铺底单）
+	var dist1StmtCnt int64
+	require.NoError(t, DB.Model(&CommissionStatement{}).Where("distributor_id = ?", dist1.Id).Count(&dist1StmtCnt).Error)
+	require.EqualValues(t, 2, dist1StmtCnt, "settled 铺底 + 新出下期账单")
+	var nextStmt CommissionStatement
+	require.NoError(t, DB.Where("distributor_id = ? AND period = ?", dist1.Id, manualFlow.Period).First(&nextStmt).Error)
+	require.Equal(t, manualFlow.Period, nextStmt.Period, "下期账单期标签 = 补录账期")
+	items := statementItemsOf(t, nextStmt.Id)
+	require.Len(t, items, 1, "下期账单仅由新 pending 流水构成")
+	it := items[0]
+	require.Equal(t, manualFlow.Id, it.FlowId)
+	require.EqualValues(t, 500, it.CommissionCents)
+	require.Equal(t, "manual", it.PaymentMethod, "manual 明细缺省（D5.2）")
+	require.Equal(t, manualFlow.CreatedAt, it.CompleteTime, "manual 到账时间 = 记账时间（D5.2）")
+	require.EqualValues(t, 500, nextStmt.TotalCommissionCents)
+	require.EqualValues(t, 500, nextStmt.SettleAmountCents)
+
+	// 流水终态：翻 available + statement_id 回填
+	var gotFlow CommissionFlow
+	require.NoError(t, DB.First(&gotFlow, manualFlow.Id).Error)
+	require.Equal(t, CommissionFlowAvailable, gotFlow.Status)
+	require.Equal(t, nextStmt.Id, gotFlow.StatementId)
+
+	// payable 调整单不投影：dist2 无新账单、零流水（调整单不产生流水，无双重计算）
+	var dist2StmtCnt, dist2FlowCnt int64
+	require.NoError(t, DB.Model(&CommissionStatement{}).Where("distributor_id = ?", dist2.Id).Count(&dist2StmtCnt).Error)
+	require.EqualValues(t, 1, dist2StmtCnt, "dist2 仍只有原 payable 账单")
+	require.NoError(t, DB.Model(&CommissionFlow{}).Where("distributor_id = ?", dist2.Id).Count(&dist2FlowCnt).Error)
+	require.Zero(t, dist2FlowCnt, "调整单零流水投影")
+
+	// reversal 跨月隔离回归：settled 账单对应充值单作废拒绝（03-03 语义回归）
+	fSettled := seedFlow(t, seedFlowOpts{
+		distributorId: dist1.Id, customerId: cust.Id, tradeNo: "TSWEEP-SETTLED",
+		topupMoneyCents: 1000, rateBp: 1000, amountCents: 100, period: "2026-08",
+		status: CommissionFlowAvailable, // 已出账（settled 账单内的流水终态）
+		withTopUp: &seedFlowTopUpOpts{paymentMethod: "epay", paymentProvider: "epay", completeTime: 1755000000},
+	})
+	err = VoidTopUp(fSettled.TradeNo, "已出账作废尝试", 7)
+	require.ErrorIs(t, err, ErrAlreadyStatemented, "已出账作废必须拒绝（历史不涂改）")
+	var tu TopUp
+	require.NoError(t, DB.Where("trade_no = ?", fSettled.TradeNo).First(&tu).Error)
+	require.Equal(t, common.TopUpStatusSuccess, tu.Status, "作废整体回滚：status 未变")
+	var revCnt int64
+	require.NoError(t, DB.Model(&CommissionFlow{}).Where("trade_no = ? AND flow_type = ?", fSettled.TradeNo, CommissionFlowReversal).Count(&revCnt).Error)
+	require.Zero(t, revCnt, "作废回滚零冲销流水")
+}
+
+// TestVoidTopUpLockDiscipline D5.4 锁纪律统一验证：
+//  1. 源码结构断言：作废事务闭包内含分销商 users 行锁、位于 topup 行锁之前（与出账
+//     事务 generateStatementTx 同序，消除交叉死锁面），且锁目标取自原流水 DistributorId
+//     （checker m-3：void-改绑并发下当前 inviter_id 不可信）
+//  2. 无佣金链路充值单：跳过分销商锁，作废语义原样
+//  3. 有佣金链路充值单：补锁后冲销语义原样（正负流水同账期）
+func TestVoidTopUpLockDiscipline(t *testing.T) {
+	t.Run("source_lock_order", func(t *testing.T) {
+		src, err := os.ReadFile("commission_reversal.go")
+		require.NoError(t, err)
+		s := string(src)
+
+		// 唯一锚定补锁代码处的原流水定位查询（ReverseCommissionTx 内有相似查询，勿混用）
+		flowLookupIdx := strings.Index(s, `Order("id DESC").First(&original).Error`)
+		require.Positive(t, flowLookupIdx, "原佣金流水定位查询缺失（m-3 锁目标依据）")
+		distLockIdx := strings.Index(s, `Select("id").First(&lockUser, "id = ?", lockDistId)`)
+		require.Positive(t, distLockIdx, "分销商 users 行锁缺失（D5.4）")
+		topUpLockIdx := strings.Index(s, `Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", tradeNo).First(topUp)`)
+		require.Positive(t, topUpLockIdx, "topup 行锁缺失（03-03 既有）")
+
+		require.Less(t, flowLookupIdx, distLockIdx, "先无锁读原流水取 DistributorId，再锁该分销商行（m-3 顺序）")
+		require.Less(t, distLockIdx, topUpLockIdx, "锁顺序：分销商 users 行（第一把）→ topup 行，与出账事务同序")
+		// 业务写动作（refunded 置位）在两把锁之后
+		writeIdx := strings.Index(s, "TopUpStatusRefunded")
+		require.Positive(t, writeIdx)
+		require.Less(t, topUpLockIdx, writeIdx, "锁在业务写动作之前（D5.4）")
+		require.NotContains(t, s, "inviter_id", "锁目标禁止使用当前 inviter_id（void-改绑并发下会被改写，m-3）")
+	})
+
+	t.Run("no_commission_link_void_succeeds", func(t *testing.T) {
+		setupCommissionTestDB(t)
+		// 无原佣金流水的成功充值单（开关期充值）：跳过分销商锁直接走原流程
+		topUp := &TopUp{
+			UserId:          424242,
+			Amount:          500,
+			Money:           50.00,
+			TradeNo:         "TLOCK-NOLINK",
+			PaymentProvider: PaymentProviderEpay,
+			PaymentMethod:   PaymentProviderEpay,
+			CreateTime:      common.GetTimestamp(),
+			Status:          common.TopUpStatusSuccess,
+		}
+		require.NoError(t, DB.Create(topUp).Error)
+
+		require.NoError(t, VoidTopUp("TLOCK-NOLINK", "无佣金链路作废", 7))
+		var tu TopUp
+		require.NoError(t, DB.Where("trade_no = ?", "TLOCK-NOLINK").First(&tu).Error)
+		require.Equal(t, common.TopUpStatusRefunded, tu.Status)
+		var revCnt int64
+		require.NoError(t, DB.Model(&CommissionFlow{}).Count(&revCnt).Error)
+		require.Zero(t, revCnt, "无佣金链路零流水")
+	})
+
+	t.Run("commissioned_void_semantics_unchanged", func(t *testing.T) {
+		setupCommissionTestDB(t)
+		withCommissionEnabled(t, true)
+		// 真实记账产生 pending 原流水 → 作废成功：补锁不改变冲销语义
+		f := seedCommissionFixture(t, seedCommissionOpts{
+			paymentProvider: PaymentProviderEpay,
+			money:           100.00,
+			amount:          1000,
+			rateBp:          1000,
+			topupStatus:     common.TopUpStatusSuccess, // 仅 success 可作废
+		})
+		require.NoError(t, RecordCommissionTx(DB, f.TopUp))
+
+		require.NoError(t, VoidTopUp(f.TopUp.TradeNo, "补锁后作废", 7))
+
+		var tu TopUp
+		require.NoError(t, DB.Where("trade_no = ?", f.TopUp.TradeNo).First(&tu).Error)
+		require.Equal(t, common.TopUpStatusRefunded, tu.Status)
+		var rev CommissionFlow
+		require.NoError(t, DB.Where("trade_no = ? AND flow_type = ?", f.TopUp.TradeNo, CommissionFlowReversal).First(&rev).Error)
+		require.EqualValues(t, -1000, rev.AmountCents, "负数冲销原样")
+		require.Equal(t, rev.Period, mustOriginalPeriod(t, f.TopUp.TradeNo), "冲销与原流水同账期（净额抵减）")
+	})
+}
+
+// mustOriginalPeriod 取同单原 commission 流水的账期（冲销同账期断言用）。
+func mustOriginalPeriod(t *testing.T, tradeNo string) string {
+	t.Helper()
+	var f CommissionFlow
+	require.NoError(t, DB.Where("trade_no = ? AND flow_type = ?", tradeNo, CommissionFlowCommission).First(&f).Error)
+	return f.Period
 }

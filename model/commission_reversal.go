@@ -77,6 +77,38 @@ func VoidTopUp(tradeNo string, reason string, operatorId int) error {
 
 	var userId int
 	err := DB.Transaction(func(tx *gorm.DB) error {
+		// 锁纪律统一（契约附录 D5.4 + checker m-3 修正）：出账事务 generateStatementTx
+		// 的第一把锁是分销商 users 行——作废写路径在业务写动作之前对同一分销商行取锁，
+		// 闭合「出账 SELECT pending 后、提交前并发的作废读到 pending 原流水产生跨期冲销」
+		// 毫秒竞态（T-04-03-06）。锁目标 = 原佣金流水的 DistributorId，而非当前邀请人归属
+		// 列：void 与改绑并发时该列可能已被改写，按当前值加锁护不住原流水归属分销商。
+		// 顺序：无锁读 tradeNo 定位 topUp → 无锁查原流水取 DistributorId → 对该 users 行
+		// 取锁（原流水不存在即无佣金链路，跳过）→ 下方按原样行锁加载 topUp 继续既有逻辑。
+		// 定位读为无锁快照，仅用于确定锁目标；Status 门在行锁加载后才判定，无 TOCTOU 危害。
+		topUpPre := &TopUp{}
+		if err := tx.Where(refCol+" = ?", tradeNo).Select("id, user_id").First(topUpPre).Error; err != nil {
+			return ErrTopUpNotFound
+		}
+		lockDistId := 0
+		var original CommissionFlow
+		if err := tx.Where("trade_no = ? AND flow_type = ?", tradeNo, CommissionFlowCommission).
+			Order("id DESC").First(&original).Error; err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return err
+			}
+			// 无原佣金流水（开关期充值/未记账单）→ 无佣金链路，跳过分销商锁
+		} else {
+			lockDistId = original.DistributorId
+		}
+		if lockDistId > 0 {
+			// 分销商行已删除等异常不阻断作废（锁不可得时仅失去互斥，业务门禁不受影响）
+			var lockUser User
+			if err := tx.Set("gorm:query_option", "FOR UPDATE").
+				Select("id").First(&lockUser, "id = ?", lockDistId).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+				return err
+			}
+		}
+
 		topUp := &TopUp{}
 		// 行级锁，串行化同单并发作废（T-03-03-05）
 		if err := tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", tradeNo).First(topUp).Error; err != nil {
