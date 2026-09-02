@@ -33,7 +33,11 @@ func setupCommissionTestDB(t *testing.T) *gorm.DB {
 	common.SetDatabaseTypes(common.DatabaseTypeSQLite, common.DatabaseTypeSQLite)
 	common.RedisEnabled = false
 	common.BatchUpdateEnabled = false
-	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared&_busy_timeout=30000", strings.ReplaceAll(t.Name(), "/", "_"))
+	// _txlock=immediate：事务开始即取写锁（BEGIN IMMEDIATE）。deferred 模式下两个并发
+	// 事务可同时持 shared-cache 读锁再升级写锁 → SQLITE_LOCKED(6) 死锁，busy_timeout
+	// 不处理该类死锁；immediate 使并发事务在 BEGIN 处排队，串行化语义与生产行锁一致
+	// （并发调整测试依赖此参数，04-03）。
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared&_busy_timeout=30000&_txlock=immediate", strings.ReplaceAll(t.Name(), "/", "_"))
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	require.NoError(t, err)
 	// 注意：此处禁止 SetMaxOpenConns(1)——RecordCommissionTx 运行在调用方的

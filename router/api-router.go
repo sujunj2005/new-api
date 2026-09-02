@@ -285,8 +285,8 @@ func SetApiRouter(router *gin.Engine) {
 			commissionRoute.GET("/statements/:id/items", middleware.AdminAuth(), controller.GetCommissionStatementItems)  // A6 GET /api/commission/statements/:id/items 账单明细
 
 			// 超管侧（A7/A8）——阈值 minRole=100
-			commissionRoute.POST("/flows/manual", middleware.RootAuth(), notImplemented)               // A7 POST /api/commission/flows/manual
-			commissionRoute.POST("/statements/:id/adjustments", middleware.RootAuth(), notImplemented) // A8 POST /api/commission/statements/:id/adjustments
+			commissionRoute.POST("/flows/manual", middleware.RootAuth(), controller.CreateManualCommissionFlow)              // A7 超管人工补录/冲销流水（契约 §4.3 A7）
+			commissionRoute.POST("/statements/:id/adjustments", middleware.RootAuth(), controller.CreateStatementAdjustment) // A8 超管账单调整单（仅应付状态可开）
 		}
 
 		// A13 POST /api/topup/:tradeNo/void 充值单作废（契约附录 C1，RootAuth）
