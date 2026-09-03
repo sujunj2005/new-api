@@ -288,13 +288,19 @@ func TestWithdrawalStateMachine(t *testing.T) {
 	t.Run("reason_and_voucher_double_validation", func(t *testing.T) {
 		setupCommissionTestDB(t)
 
-		require.ErrorContains(t, RejectWithdrawalTx(1, "", 9), "驳回原因必填")
-		require.ErrorContains(t, RejectWithdrawalTx(1, "   ", 9), "驳回原因必填")
-		require.ErrorContains(t, RejectWithdrawalTx(1, strings.Repeat("字", 256), 9), "长度不能超过 255")
+		err := RejectWithdrawalTx(1, "", 9)
+		require.ErrorContains(t, err, "驳回原因必填")
+		err = RejectWithdrawalTx(1, "   ", 9)
+		require.ErrorContains(t, err, "驳回原因必填")
+		err = RejectWithdrawalTx(1, strings.Repeat("字", 256), 9)
+		require.ErrorContains(t, err, "长度不能超过 255")
 
-		require.ErrorContains(t, MarkWithdrawalPaidTx(1, "", 9), "打款凭证号必填")
-		require.ErrorContains(t, MarkWithdrawalPaidTx(1, "  ", 9), "打款凭证号必填")
-		require.ErrorContains(t, MarkWithdrawalPaidTx(1, strings.Repeat("V", 256), 9), "长度不能超过 255")
+		_, err = MarkWithdrawalPaidTx(1, "", 9)
+		require.ErrorContains(t, err, "打款凭证号必填")
+		_, err = MarkWithdrawalPaidTx(1, "  ", 9)
+		require.ErrorContains(t, err, "打款凭证号必填")
+		_, err = MarkWithdrawalPaidTx(1, strings.Repeat("V", 256), 9)
+		require.ErrorContains(t, err, "长度不能超过 255")
 
 		var count int64
 		require.NoError(t, DB.Model(&CommissionWithdrawal{}).Count(&count).Error)
