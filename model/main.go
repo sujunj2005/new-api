@@ -307,6 +307,8 @@ func migrateDB() error {
 		&CommissionStatement{},
 		&CommissionStatementItem{},
 		&StatementAdjustment{},
+		// Phase 5 按单提现（契约 01-CONTRACT.md 附录 E1 冻结，v1.4；全阶段唯一生产 schema 变更）
+		&CommissionWithdrawal{},
 	)
 	if err != nil {
 		return err

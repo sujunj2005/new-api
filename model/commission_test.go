@@ -49,6 +49,8 @@ func setupCommissionTestDB(t *testing.T) *gorm.DB {
 		&User{}, &TopUp{}, &CommissionFlow{}, &CommissionRate{}, &CommissionRateHistory{}, &Log{},
 		// Phase 4 出账引擎三表（Wave 0 补齐）：缺表时 statement 测试必 panic（04-RESEARCH Pitfall 7）
 		&CommissionStatement{}, &CommissionStatementItem{}, &StatementAdjustment{},
+		// Phase 5 提现单表（附录 E1）：缺表时提现测试必 panic（04-RESEARCH Pitfall 7 同源）
+		&CommissionWithdrawal{},
 	))
 	t.Cleanup(func() {
 		// 先恢复全局 DB 再关闭本测试库：后续测试（如 TestCommissionOptions_*）
@@ -143,6 +145,92 @@ func seedFlow(t *testing.T, opts seedFlowOpts) CommissionFlow {
 	}
 	require.NoError(t, DB.Create(&f).Error)
 	return f
+}
+
+// seedStatementOpts seedStatement 的构造选项（Phase 5 提现测试铺账单用，
+// 平移 controller 包 seedStmtRow 语义到 model 包——提现测试不依赖出账引擎铺账单）。
+type seedStatementOpts struct {
+	distributorId        int
+	period               string // "" = 按 seq 生成唯一期（uk_stmt_period 防撞）
+	status               string // "" = StatementPayable
+	totalCommissionCents int64
+	adjustedCents        int64
+	lockedAt             int64 // 0 = common.GetTimestamp()
+}
+
+// seedStatement 直插一张对账单（settle = total + adjusted 服务端算好落库）。
+func seedStatement(t *testing.T, opts seedStatementOpts) *CommissionStatement {
+	t.Helper()
+	seq := commissionTestSeq.Add(1)
+	period := opts.period
+	if period == "" {
+		// seq 驱动的唯一期号（同测试库内不撞 uk_stmt_period）
+		period = fmt.Sprintf("%04d-%02d", 2000+seq/12, seq%12+1)
+	}
+	status := opts.status
+	if status == "" {
+		status = StatementPayable
+	}
+	lockedAt := opts.lockedAt
+	if lockedAt == 0 {
+		lockedAt = common.GetTimestamp()
+	}
+	s := &CommissionStatement{
+		DistributorId:        opts.distributorId,
+		Period:               period,
+		TotalTopupCents:      (opts.totalCommissionCents - opts.adjustedCents) * 10,
+		TotalCommissionCents: opts.totalCommissionCents,
+		AdjustedCents:        opts.adjustedCents,
+		SettleAmountCents:    opts.totalCommissionCents + opts.adjustedCents,
+		Status:               status,
+		LockedAt:             lockedAt,
+	}
+	require.NoError(t, DB.Create(s).Error)
+	return s
+}
+
+// seedWithdrawalOpts seedWithdrawal 的构造选项（铺五态任意前置态供迁移测试）。
+type seedWithdrawalOpts struct {
+	statementId   int64
+	distributorId int
+	status        string // "" = WithdrawalPending
+	reason        string
+	voucherNo     string
+	withdrawalNo  string // "" = WD-TEST-{seq}（uk_wd_no 防撞）
+	operatorId    int
+	reviewedAt    int64
+	approvedAt    int64
+	paidAt        int64
+	rejectedAt    int64
+}
+
+// seedWithdrawal 直插一张提现单行（绕过申请事务，任意前置态）。
+func seedWithdrawal(t *testing.T, opts seedWithdrawalOpts) *CommissionWithdrawal {
+	t.Helper()
+	seq := commissionTestSeq.Add(1)
+	status := opts.status
+	if status == "" {
+		status = WithdrawalPending
+	}
+	withdrawalNo := opts.withdrawalNo
+	if withdrawalNo == "" {
+		withdrawalNo = fmt.Sprintf("WD-TEST-%d", seq)
+	}
+	wd := &CommissionWithdrawal{
+		WithdrawalNo:  withdrawalNo,
+		StatementId:   opts.statementId,
+		DistributorId: opts.distributorId,
+		Status:        status,
+		Reason:        opts.reason,
+		VoucherNo:     opts.voucherNo,
+		OperatorId:    opts.operatorId,
+		ReviewedAt:    opts.reviewedAt,
+		ApprovedAt:    opts.approvedAt,
+		PaidAt:        opts.paidAt,
+		RejectedAt:    opts.rejectedAt,
+	}
+	require.NoError(t, DB.Create(wd).Error)
+	return wd
 }
 
 // commissionFixture 一键分销链路种子：分销商 + 客户（inviter_id 归属）+ 比例行 + 充值单。
