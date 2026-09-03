@@ -53,16 +53,19 @@ interface StatementTableProps {
   distributorId?: number
   /** 行点击回调（管理端打开详情；Phase 6 self 场景同样可挂明细跳转） */
   onOpenDetail?: (statement: CommissionStatement) => void
+  /** Phase 5 additive：self 视角 payable 行「申请提现」回调（三条件齐备才渲染，undefined 时 admin 零影响，D4 禁复制派生） */
+  onApplyWithdraw?: (statement: CommissionStatement) => void
 }
 
 /**
  * 对账单列表（A4/A10）：period/distributor_id/status 过滤条 + 分页表格。
- * 最小只读：无写操作按钮、无导出（契约 D4 范围纪律）。
+ * 最小只读：无导出（契约 D4 范围纪律）；Phase 5 additive 行内「申请提现」入口。
  */
 export function StatementTable({
   scope,
   distributorId,
   onOpenDetail,
+  onApplyWithdraw,
 }: StatementTableProps) {
   const { t } = useTranslation()
   const [rows, setRows] = useState<CommissionStatement[]>([])
@@ -180,15 +183,29 @@ export function StatementTable({
                 <TableCell>{row.status}</TableCell>
                 <TableCell>{formatUnixTime(row.created_at)}</TableCell>
                 <TableCell>
-                  {onOpenDetail && (
-                    <Button
-                      variant='outline'
-                      size='sm'
-                      onClick={() => onOpenDetail(row)}
-                    >
-                      {t('Detail')}
-                    </Button>
-                  )}
+                  <div className='flex flex-wrap gap-1'>
+                    {onOpenDetail && (
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        onClick={() => onOpenDetail(row)}
+                      >
+                        {t('Detail')}
+                      </Button>
+                    )}
+                    {/* Phase 5 additive：self + payable + 回调齐备才出「申请提现」（undefined 时行为与现状一致） */}
+                    {scope === 'self' &&
+                      row.status === 'payable' &&
+                      onApplyWithdraw && (
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() => onApplyWithdraw(row)}
+                        >
+                          {t('Apply Withdrawal')}
+                        </Button>
+                      )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))

@@ -540,4 +540,17 @@ export const STATIC_I18N_KEYS = [
   'Failed to load',
   'Expired at',
   'Cancelled at',
+
+  // Commission withdrawals (Phase 5, dynamic labels: status/timeline maps + section titleKey)
+  'Withdrawal Review',
+  'Withdrawal Pending',
+  'Withdrawal Reviewing',
+  'Withdrawal Approved',
+  'Withdrawal Paid',
+  'Withdrawal Rejected',
+  'Applied At',
+  'Reviewed At',
+  'Approved At',
+  'Paid At',
+  'Rejected At',
 ] as const
