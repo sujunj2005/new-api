@@ -5061,6 +5061,7 @@
     "Apply Withdrawal": "Apply Withdrawal",
     "This application withdraws the full statement amount.": "This application withdraws the full statement amount.",
     "Withdrawal application submitted": "Withdrawal application submitted",
+    "Withdrawal accepted": "Withdrawal accepted",
     "Reject Withdrawal": "Reject Withdrawal",
     "Reject reason cannot be empty": "Reject reason cannot be empty",
     "Enter reject reason": "Enter reject reason",

@@ -5061,6 +5061,7 @@
     "Apply Withdrawal": "申请提现",
     "This application withdraws the full statement amount.": "本次申请按账单全额提现。",
     "Withdrawal application submitted": "提现申请已提交",
+    "Withdrawal accepted": "提现单已受理",
     "Reject Withdrawal": "驳回提现",
     "Reject reason cannot be empty": "驳回原因不能为空",
     "Enter reject reason": "请输入驳回原因",

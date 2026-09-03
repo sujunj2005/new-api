@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import {
   Activity,
+  Banknote,
   Box,
   CreditCard,
   FileText,
@@ -170,6 +171,11 @@ export function useSidebarData(): SidebarData {
             url: '/commission-statements/list',
             activeUrls: ['/commission-statements'],
             icon: FileText,
+          },
+          {
+            title: t('Withdrawal Review'),
+            url: '/commission-withdrawals/list',
+            icon: Banknote,
           },
         ],
       },

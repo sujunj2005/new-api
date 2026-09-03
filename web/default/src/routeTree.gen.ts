@@ -49,12 +49,14 @@ import { Route as AuthenticatedModelsIndexRouteImport } from './routes/_authenti
 import { Route as AuthenticatedKeysIndexRouteImport } from './routes/_authenticated/keys/index'
 import { Route as AuthenticatedDistributorIndexRouteImport } from './routes/_authenticated/distributor/index'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
+import { Route as AuthenticatedCommissionWithdrawalsIndexRouteImport } from './routes/_authenticated/commission-withdrawals/index'
 import { Route as AuthenticatedCommissionStatementsIndexRouteImport } from './routes/_authenticated/commission-statements/index'
 import { Route as AuthenticatedChannelsIndexRouteImport } from './routes/_authenticated/channels/index'
 import { Route as AuthenticatedUsageLogsSectionRouteImport } from './routes/_authenticated/usage-logs/$section'
 import { Route as AuthenticatedModelsSectionRouteImport } from './routes/_authenticated/models/$section'
 import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
 import { Route as AuthenticatedDashboardSectionRouteImport } from './routes/_authenticated/dashboard/$section'
+import { Route as AuthenticatedCommissionWithdrawalsSectionRouteImport } from './routes/_authenticated/commission-withdrawals/$section'
 import { Route as AuthenticatedCommissionStatementsSectionRouteImport } from './routes/_authenticated/commission-statements/$section'
 import { Route as AuthenticatedChatChatIdRouteImport } from './routes/_authenticated/chat/$chatId'
 import { Route as authUserResetRouteImport } from './routes/(auth)/user/reset'
@@ -283,6 +285,12 @@ const AuthenticatedDashboardIndexRoute =
     path: '/dashboard/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCommissionWithdrawalsIndexRoute =
+  AuthenticatedCommissionWithdrawalsIndexRouteImport.update({
+    id: '/commission-withdrawals/',
+    path: '/commission-withdrawals/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCommissionStatementsIndexRoute =
   AuthenticatedCommissionStatementsIndexRouteImport.update({
     id: '/commission-statements/',
@@ -317,6 +325,12 @@ const AuthenticatedDashboardSectionRoute =
   AuthenticatedDashboardSectionRouteImport.update({
     id: '/dashboard/$section',
     path: '/dashboard/$section',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCommissionWithdrawalsSectionRoute =
+  AuthenticatedCommissionWithdrawalsSectionRouteImport.update({
+    id: '/commission-withdrawals/$section',
+    path: '/commission-withdrawals/$section',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedCommissionStatementsSectionRoute =
@@ -448,12 +462,14 @@ export interface FileRoutesByFullPath {
   '/user/reset': typeof authUserResetRoute
   '/chat/$chatId': typeof AuthenticatedChatChatIdRoute
   '/commission-statements/$section': typeof AuthenticatedCommissionStatementsSectionRoute
+  '/commission-withdrawals/$section': typeof AuthenticatedCommissionWithdrawalsSectionRoute
   '/dashboard/$section': typeof AuthenticatedDashboardSectionRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/models/$section': typeof AuthenticatedModelsSectionRoute
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/channels/': typeof AuthenticatedChannelsIndexRoute
   '/commission-statements/': typeof AuthenticatedCommissionStatementsIndexRoute
+  '/commission-withdrawals/': typeof AuthenticatedCommissionWithdrawalsIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/distributor/': typeof AuthenticatedDistributorIndexRoute
   '/keys/': typeof AuthenticatedKeysIndexRoute
@@ -510,12 +526,14 @@ export interface FileRoutesByTo {
   '/user/reset': typeof authUserResetRoute
   '/chat/$chatId': typeof AuthenticatedChatChatIdRoute
   '/commission-statements/$section': typeof AuthenticatedCommissionStatementsSectionRoute
+  '/commission-withdrawals/$section': typeof AuthenticatedCommissionWithdrawalsSectionRoute
   '/dashboard/$section': typeof AuthenticatedDashboardSectionRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/models/$section': typeof AuthenticatedModelsSectionRoute
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/channels': typeof AuthenticatedChannelsIndexRoute
   '/commission-statements': typeof AuthenticatedCommissionStatementsIndexRoute
+  '/commission-withdrawals': typeof AuthenticatedCommissionWithdrawalsIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
   '/distributor': typeof AuthenticatedDistributorIndexRoute
   '/keys': typeof AuthenticatedKeysIndexRoute
@@ -576,12 +594,14 @@ export interface FileRoutesById {
   '/(auth)/user/reset': typeof authUserResetRoute
   '/_authenticated/chat/$chatId': typeof AuthenticatedChatChatIdRoute
   '/_authenticated/commission-statements/$section': typeof AuthenticatedCommissionStatementsSectionRoute
+  '/_authenticated/commission-withdrawals/$section': typeof AuthenticatedCommissionWithdrawalsSectionRoute
   '/_authenticated/dashboard/$section': typeof AuthenticatedDashboardSectionRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/_authenticated/models/$section': typeof AuthenticatedModelsSectionRoute
   '/_authenticated/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/_authenticated/channels/': typeof AuthenticatedChannelsIndexRoute
   '/_authenticated/commission-statements/': typeof AuthenticatedCommissionStatementsIndexRoute
+  '/_authenticated/commission-withdrawals/': typeof AuthenticatedCommissionWithdrawalsIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/_authenticated/distributor/': typeof AuthenticatedDistributorIndexRoute
   '/_authenticated/keys/': typeof AuthenticatedKeysIndexRoute
@@ -641,12 +661,14 @@ export interface FileRouteTypes {
     | '/user/reset'
     | '/chat/$chatId'
     | '/commission-statements/$section'
+    | '/commission-withdrawals/$section'
     | '/dashboard/$section'
     | '/errors/$error'
     | '/models/$section'
     | '/usage-logs/$section'
     | '/channels/'
     | '/commission-statements/'
+    | '/commission-withdrawals/'
     | '/dashboard/'
     | '/distributor/'
     | '/keys/'
@@ -703,12 +725,14 @@ export interface FileRouteTypes {
     | '/user/reset'
     | '/chat/$chatId'
     | '/commission-statements/$section'
+    | '/commission-withdrawals/$section'
     | '/dashboard/$section'
     | '/errors/$error'
     | '/models/$section'
     | '/usage-logs/$section'
     | '/channels'
     | '/commission-statements'
+    | '/commission-withdrawals'
     | '/dashboard'
     | '/distributor'
     | '/keys'
@@ -768,12 +792,14 @@ export interface FileRouteTypes {
     | '/(auth)/user/reset'
     | '/_authenticated/chat/$chatId'
     | '/_authenticated/commission-statements/$section'
+    | '/_authenticated/commission-withdrawals/$section'
     | '/_authenticated/dashboard/$section'
     | '/_authenticated/errors/$error'
     | '/_authenticated/models/$section'
     | '/_authenticated/usage-logs/$section'
     | '/_authenticated/channels/'
     | '/_authenticated/commission-statements/'
+    | '/_authenticated/commission-withdrawals/'
     | '/_authenticated/dashboard/'
     | '/_authenticated/distributor/'
     | '/_authenticated/keys/'
@@ -1107,6 +1133,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/commission-withdrawals/': {
+      id: '/_authenticated/commission-withdrawals/'
+      path: '/commission-withdrawals'
+      fullPath: '/commission-withdrawals/'
+      preLoaderRoute: typeof AuthenticatedCommissionWithdrawalsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/commission-statements/': {
       id: '/_authenticated/commission-statements/'
       path: '/commission-statements'
@@ -1147,6 +1180,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard/$section'
       fullPath: '/dashboard/$section'
       preLoaderRoute: typeof AuthenticatedDashboardSectionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/commission-withdrawals/$section': {
+      id: '/_authenticated/commission-withdrawals/$section'
+      path: '/commission-withdrawals/$section'
+      fullPath: '/commission-withdrawals/$section'
+      preLoaderRoute: typeof AuthenticatedCommissionWithdrawalsSectionRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/commission-statements/$section': {
@@ -1359,12 +1399,14 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedChat2linkRoute: typeof AuthenticatedChat2linkRoute
   AuthenticatedChatChatIdRoute: typeof AuthenticatedChatChatIdRoute
   AuthenticatedCommissionStatementsSectionRoute: typeof AuthenticatedCommissionStatementsSectionRoute
+  AuthenticatedCommissionWithdrawalsSectionRoute: typeof AuthenticatedCommissionWithdrawalsSectionRoute
   AuthenticatedDashboardSectionRoute: typeof AuthenticatedDashboardSectionRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
   AuthenticatedModelsSectionRoute: typeof AuthenticatedModelsSectionRoute
   AuthenticatedUsageLogsSectionRoute: typeof AuthenticatedUsageLogsSectionRoute
   AuthenticatedChannelsIndexRoute: typeof AuthenticatedChannelsIndexRoute
   AuthenticatedCommissionStatementsIndexRoute: typeof AuthenticatedCommissionStatementsIndexRoute
+  AuthenticatedCommissionWithdrawalsIndexRoute: typeof AuthenticatedCommissionWithdrawalsIndexRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
   AuthenticatedDistributorIndexRoute: typeof AuthenticatedDistributorIndexRoute
   AuthenticatedKeysIndexRoute: typeof AuthenticatedKeysIndexRoute
@@ -1386,6 +1428,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedChatChatIdRoute: AuthenticatedChatChatIdRoute,
   AuthenticatedCommissionStatementsSectionRoute:
     AuthenticatedCommissionStatementsSectionRoute,
+  AuthenticatedCommissionWithdrawalsSectionRoute:
+    AuthenticatedCommissionWithdrawalsSectionRoute,
   AuthenticatedDashboardSectionRoute: AuthenticatedDashboardSectionRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
   AuthenticatedModelsSectionRoute: AuthenticatedModelsSectionRoute,
@@ -1393,6 +1437,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedChannelsIndexRoute: AuthenticatedChannelsIndexRoute,
   AuthenticatedCommissionStatementsIndexRoute:
     AuthenticatedCommissionStatementsIndexRoute,
+  AuthenticatedCommissionWithdrawalsIndexRoute:
+    AuthenticatedCommissionWithdrawalsIndexRoute,
   AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
   AuthenticatedDistributorIndexRoute: AuthenticatedDistributorIndexRoute,
   AuthenticatedKeysIndexRoute: AuthenticatedKeysIndexRoute,
