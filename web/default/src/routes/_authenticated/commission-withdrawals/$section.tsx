@@ -109,29 +109,30 @@ function CommissionWithdrawals() {
               }}
             />
           )}
+          {/* 弹窗置于 Content 内：SectionPageLayout 仅渲染命名插槽，外部子树不挂载 */}
+          <WithdrawRejectDialog
+            withdrawal={rejectTarget}
+            onOpenChange={(open) => {
+              if (!open) setRejectTarget(null)
+            }}
+            onSuccess={bumpRefresh}
+          />
+          <WithdrawApproveDialog
+            withdrawal={approveTarget}
+            onOpenChange={(open) => {
+              if (!open) setApproveTarget(null)
+            }}
+            onSuccess={bumpRefresh}
+          />
+          <WithdrawMarkPaidDialog
+            withdrawal={paidTarget}
+            onOpenChange={(open) => {
+              if (!open) setPaidTarget(null)
+            }}
+            onSuccess={bumpRefresh}
+          />
         </div>
       </SectionPageLayout.Content>
-      <WithdrawRejectDialog
-        withdrawal={rejectTarget}
-        onOpenChange={(open) => {
-          if (!open) setRejectTarget(null)
-        }}
-        onSuccess={bumpRefresh}
-      />
-      <WithdrawApproveDialog
-        withdrawal={approveTarget}
-        onOpenChange={(open) => {
-          if (!open) setApproveTarget(null)
-        }}
-        onSuccess={bumpRefresh}
-      />
-      <WithdrawMarkPaidDialog
-        withdrawal={paidTarget}
-        onOpenChange={(open) => {
-          if (!open) setPaidTarget(null)
-        }}
-        onSuccess={bumpRefresh}
-      />
     </SectionPageLayout>
   )
 }

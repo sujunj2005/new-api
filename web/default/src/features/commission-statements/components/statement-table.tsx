@@ -55,6 +55,8 @@ interface StatementTableProps {
   onOpenDetail?: (statement: CommissionStatement) => void
   /** Phase 5 additive：self 视角 payable 行「申请提现」回调（三条件齐备才渲染，undefined 时 admin 零影响，D4 禁复制派生） */
   onApplyWithdraw?: (statement: CommissionStatement) => void
+  /** Phase 5 additive：变更时重取列表（申请/驳回回退/打款结清后账单状态联动刷新，D-05） */
+  refreshKey?: number
 }
 
 /**
@@ -66,6 +68,7 @@ export function StatementTable({
   distributorId,
   onOpenDetail,
   onApplyWithdraw,
+  refreshKey,
 }: StatementTableProps) {
   const { t } = useTranslation()
   const [rows, setRows] = useState<CommissionStatement[]>([])
@@ -100,7 +103,7 @@ export function StatementTable({
 
   useEffect(() => {
     void load()
-  }, [load])
+  }, [load, refreshKey])
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 

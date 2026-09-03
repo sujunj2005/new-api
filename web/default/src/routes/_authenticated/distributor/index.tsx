@@ -62,6 +62,7 @@ function DistributorConsole() {
               scope='self'
               onOpenDetail={setSelected}
               onApplyWithdraw={setApplyTarget}
+              refreshKey={refreshKey}
             />
             {selected && (
               <StatementDetail
@@ -77,15 +78,16 @@ function DistributorConsole() {
             </h2>
             <WithdrawalTable scope='self' refreshKey={refreshKey} />
           </section>
+          {/* 弹窗置于 Content 内：SectionPageLayout 仅渲染命名插槽，外部子树不挂载 */}
+          <WithdrawApplyDialog
+            statement={applyTarget}
+            onOpenChange={(open) => {
+              if (!open) setApplyTarget(null)
+            }}
+            onSuccess={() => setRefreshKey((k) => k + 1)}
+          />
         </div>
       </SectionPageLayout.Content>
-      <WithdrawApplyDialog
-        statement={applyTarget}
-        onOpenChange={(open) => {
-          if (!open) setApplyTarget(null)
-        }}
-        onSuccess={() => setRefreshKey((k) => k + 1)}
-      />
     </SectionPageLayout>
   )
 }
