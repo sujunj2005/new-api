@@ -271,8 +271,8 @@ func SetApiRouter(router *gin.Engine) {
 		{
 			// 分销商侧（A9/A10/A11/A12）——精确匹配 role==5
 			commissionRoute.GET("/dashboard", middleware.DistributorAuth(), notImplemented)                       // A9 GET /api/commission/dashboard
-			commissionRoute.GET("/statements/self", middleware.DistributorAuth(), notImplemented)                 // A10 GET /api/commission/statements/self
-			commissionRoute.GET("/statements/self/:id/items", middleware.DistributorAuth(), notImplemented)       // A11 GET /api/commission/statements/self/:id/items
+			commissionRoute.GET("/statements/self", middleware.DistributorAuth(), controller.GetSelfCommissionStatements)           // A10 GET /api/commission/statements/self 分销商账单列表（仅本人）
+			commissionRoute.GET("/statements/self/:id/items", middleware.DistributorAuth(), controller.GetSelfCommissionStatementItems) // A11 GET /api/commission/statements/self/:id/items 分销商账单明细（归属校验）
 			commissionRoute.GET("/current", middleware.DistributorAuth(), notImplemented)                         // A12 GET /api/commission/current
 
 			// 管理员侧（A1/A2/A3/A4/A5/A6）——阈值 minRole=10
@@ -287,6 +287,15 @@ func SetApiRouter(router *gin.Engine) {
 			// 超管侧（A7/A8）——阈值 minRole=100
 			commissionRoute.POST("/flows/manual", middleware.RootAuth(), controller.CreateManualCommissionFlow)              // A7 超管人工补录/冲销流水（契约 §4.3 A7）
 			commissionRoute.POST("/statements/:id/adjustments", middleware.RootAuth(), controller.CreateStatementAdjustment) // A8 超管账单调整单（仅应付状态可开）
+
+			// 提现面（A15-A21，契约附录 E2 冻结；分销商侧 DistributorAuth ×3 + 管理侧 AdminAuth ×4）
+			commissionRoute.POST("/withdrawals", middleware.DistributorAuth(), controller.CreateWithdrawal)         // A15 POST /api/commission/withdrawals 发起提现申请（按单全额 D-08）
+			commissionRoute.GET("/withdrawals/self", middleware.DistributorAuth(), controller.GetSelfWithdrawals)   // A16 GET /api/commission/withdrawals/self 分销商提现单列表（服务端收窄）
+			commissionRoute.GET("/withdrawals", middleware.AdminAuth(), controller.GetWithdrawals)                  // A17 GET /api/commission/withdrawals 管理员提现单列表
+			commissionRoute.POST("/withdrawals/:id/accept", middleware.AdminAuth(), controller.AcceptWithdrawal)    // A18 POST /api/commission/withdrawals/:id/accept 受理（pending→reviewing）
+			commissionRoute.POST("/withdrawals/:id/reject", middleware.AdminAuth(), controller.RejectWithdrawal)    // A19 POST /api/commission/withdrawals/:id/reject 驳回（仅 reviewing，Q2=B）
+			commissionRoute.POST("/withdrawals/:id/approve", middleware.AdminAuth(), controller.ApproveWithdrawal)  // A20 POST /api/commission/withdrawals/:id/approve 批准（reviewing→approved，Q1=B）
+			commissionRoute.POST("/withdrawals/:id/paid", middleware.AdminAuth(), controller.MarkWithdrawalPaid)    // A21 POST /api/commission/withdrawals/:id/paid 打款登记（approved→paid，Q1=B）
 		}
 
 		// A13 POST /api/topup/:tradeNo/void 充值单作废（契约附录 C1，RootAuth）
