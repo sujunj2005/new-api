@@ -5074,6 +5074,24 @@
     "Enter voucher no": "请输入打款凭证号",
     "Payment registered successfully": "打款登记成功",
     "Payment Amount": "打款金额",
-    "Withdrawal Records": "提现记录"
+    "Withdrawal Records": "提现记录",
+    "Customers": "客户",
+    "Withdrawals": "提现",
+    "Current Pending": "当期未出账",
+    "Total Statemented": "历史已出账",
+    "Total Withdrawn": "已提现",
+    "Pending Withdraw": "待提现",
+    "Registered At": "注册时间",
+    "Total Topup": "累计充值",
+    "Topup Details": "充值明细",
+    "Customer Topups": "客户充值明细",
+    "No customers found": "暂无客户",
+    "No topups found": "暂无充值记录",
+    "Topup Pending": "待支付",
+    "Topup Success": "充值成功",
+    "Topup Failed": "充值失败",
+    "Topup Expired": "已过期",
+    "Topup Refunded": "已退款",
+    "Unbilled Preview": "未出账实时预览"
   }
 }

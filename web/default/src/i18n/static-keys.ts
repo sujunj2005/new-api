@@ -553,4 +553,19 @@ export const STATIC_I18N_KEYS = [
   'Approved At',
   'Paid At',
   'Rejected At',
+
+  // Distributor console (Phase 6, dynamic labels: section titleKeys + card titles + topup status map)
+  'Overview',
+  'Customers',
+  'Statement List',
+  'Withdrawals',
+  'Current Pending',
+  'Total Statemented',
+  'Total Withdrawn',
+  'Pending Withdraw',
+  'Topup Pending',
+  'Topup Success',
+  'Topup Failed',
+  'Topup Expired',
+  'Topup Refunded',
 ] as const

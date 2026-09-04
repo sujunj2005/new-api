@@ -5074,6 +5074,24 @@
     "Enter voucher no": "Enter voucher no",
     "Payment registered successfully": "Payment registered successfully",
     "Payment Amount": "Payment Amount",
-    "Withdrawal Records": "Withdrawal Records"
+    "Withdrawal Records": "Withdrawal Records",
+    "Customers": "Customers",
+    "Withdrawals": "Withdrawals",
+    "Current Pending": "Current Pending",
+    "Total Statemented": "Total Statemented",
+    "Total Withdrawn": "Total Withdrawn",
+    "Pending Withdraw": "Pending Withdraw",
+    "Registered At": "Registered At",
+    "Total Topup": "Total Topup",
+    "Topup Details": "Topup Details",
+    "Customer Topups": "Customer Topups",
+    "No customers found": "No customers found",
+    "No topups found": "No topups found",
+    "Topup Pending": "Topup Pending",
+    "Topup Success": "Topup Success",
+    "Topup Failed": "Topup Failed",
+    "Topup Expired": "Topup Expired",
+    "Topup Refunded": "Topup Refunded",
+    "Unbilled Preview": "Unbilled Preview"
   }
 }
