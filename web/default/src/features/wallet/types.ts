@@ -247,7 +247,8 @@ export interface UserWalletData {
 /**
  * Topup record status
  */
-export type TopupStatus = 'success' | 'pending' | 'expired'
+/** TopUp 状态五值（common/constants.go + 契约附录 C1：refunded 由作废动作产生） */
+export type TopupStatus = 'success' | 'pending' | 'expired' | 'failed' | 'refunded'
 
 /**
  * Topup billing record

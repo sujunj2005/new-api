@@ -46,6 +46,15 @@ export const STATUS_CONFIG: Record<TopupStatus, StatusConfig> = {
     variant: 'danger',
     label: 'Expired',
   },
+  // 契约附录 C1：A13 作废动作产生 refunded（此前缺失导致作废单误显示为 Pending）
+  refunded: {
+    variant: 'danger',
+    label: 'Refunded',
+  },
+  failed: {
+    variant: 'danger',
+    label: 'Failed',
+  },
 }
 
 /**
