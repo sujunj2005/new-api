@@ -5,9 +5,11 @@ package model
 
 // StatementItemDetail A6 明细列表项：CommissionStatementItem 扁平嵌入 + 客户 username 冗余
 // （契约 §4.3 A6；JOIN 先例 model/commission_rate.go ListRates）。
+// RateBp 为 v1.5 附录 F1 增补：比例快照（万分比），无关联流水时为 0。
 type StatementItemDetail struct {
 	CommissionStatementItem
 	Username string `json:"username"`
+	RateBp   int    `json:"rate_bp"`
 }
 
 // ListStatements A4 管理员账单列表分页（契约 §4.3 A4）。
@@ -52,7 +54,9 @@ func GetStatementWithAdjustments(id int64) (*CommissionStatement, []StatementAdj
 }
 
 // ListStatementItems A6 账单明细分页（契约 §4.3 A6）。
-// LEFT JOIN users 冗余客户 username（customer_id 关联），干净 COUNT + 分页，按 id ASC。
+// LEFT JOIN users 冗余客户 username（customer_id 关联）；v1.5 附录 F1 增补
+// 关联佣金流水表冗余比例快照（flow_id 关联，无匹配行时为 0）。
+// 干净 COUNT + 分页，按 id ASC；一处改动 A6/A11 双端点同形状生效。
 func ListStatementItems(statementId int64, page, pageSize int) ([]StatementItemDetail, int64, error) {
 	var total int64
 	if err := DB.Model(&CommissionStatementItem{}).
@@ -62,8 +66,9 @@ func ListStatementItems(statementId int64, page, pageSize int) ([]StatementItemD
 	}
 	var details []StatementItemDetail
 	if err := DB.Model(&CommissionStatementItem{}).
-		Select("commission_statement_items.*, users.username").
+		Select("commission_statement_items.*, users.username, commission_flows.rate_bp").
 		Joins("LEFT JOIN users ON users.id = commission_statement_items.customer_id").
+		Joins("LEFT JOIN commission_flows ON commission_flows.id = commission_statement_items.flow_id").
 		Where("commission_statement_items.statement_id = ?", statementId).
 		Order("commission_statement_items.id ASC").
 		Offset((page - 1) * pageSize).Limit(pageSize).
