@@ -19,6 +19,8 @@ For commercial licensing, please contact support@quantumnous.com
 import type { PermissionCatalog } from '@/lib/admin-permissions'
 import { api } from '@/lib/api'
 
+import type { DistributorCustomerRow } from '@/features/distributor-console/api'
+
 import type {
   User,
   GetUsersParams,
@@ -205,5 +207,80 @@ export async function adminUnbindCustomOAuth(
   const res = await api.delete(
     `/api/user/${userId}/oauth/bindings/${providerId}`
   )
+  return res.data
+}
+
+// ============================================================================
+// Attribution ops APIs (Phase 6 plan 6.1 gap closure G-1/G-2/G-3)
+// ============================================================================
+
+/** B7 分页信封（PageInfo 形状） */
+export interface AdminDistributorCustomersPage {
+  page: number
+  page_size: number
+  total: number
+  items: DistributorCustomerRow[]
+}
+
+/**
+ * B7 管理员查看分销商客户列表（AdminAuth）。
+ * 端点：GET /api/attribution/distributor/:id/customers?p=&page_size=（契约附录 G，plan 6.1 G-1）。
+ * 行形状与 B4 distributorCustomerItem 逐字一致（type 复用单一来源）；
+ * total_topup_cents/total_commission_cents 为 int64 分，展示层 formatCents 换算。
+ */
+export async function fetchAdminDistributorCustomers(
+  distributorId: number,
+  page?: number
+): Promise<ApiResponse<AdminDistributorCustomersPage>> {
+  const q = new URLSearchParams()
+  if (page) q.set('p', String(page))
+  const res = await api.get(
+    `/api/attribution/distributor/${distributorId}/customers?${q.toString()}`
+  )
+  return res.data
+}
+
+/**
+ * B2 管理员手动改绑（RootAuth；reason 必填，服务端同事务写审计）。
+ * 服务端校验是唯一业务防线，失败信封 message 原样回显。
+ */
+export async function adminBindAttribution(
+  userId: number,
+  distributorId: number,
+  reason: string
+): Promise<ApiResponse> {
+  const res = await api.post('/api/attribution/bind', {
+    user_id: userId,
+    distributor_id: distributorId,
+    reason,
+  })
+  return res.data
+}
+
+/** B3 归属审计行（model/attribution_change.go json tag 逐字） */
+export interface AttributionChangeRow {
+  id: number
+  user_id: number
+  old_inviter_id: number
+  new_inviter_id: number
+  source: string
+  operator_id: number
+  reason: string
+  created_at: number
+}
+
+/**
+ * B3 归属审计查询（AdminAuth；支持 user_id 过滤 + 分页）。
+ */
+export async function fetchAttributionChanges(params: {
+  userId?: number
+  page?: number
+}): Promise<
+  ApiResponse<{ total: number; items: AttributionChangeRow[] }>
+> {
+  const q = new URLSearchParams()
+  if (params.userId) q.set('user_id', String(params.userId))
+  if (params.page) q.set('p', String(params.page))
+  const res = await api.get(`/api/attribution/changes?${q.toString()}`)
   return res.data
 }

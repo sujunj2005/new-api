@@ -5107,6 +5107,25 @@
     "Distributor ID cannot be empty": "Distributor ID cannot be empty",
     "Rate cannot be empty": "Rate cannot be empty",
     "Rate must be a non-negative integer": "Rate must be a non-negative integer",
-    "Operator": "Operator"
+    "Operator": "Operator",
+    "Customer List": "Customer List",
+    "Assign Attribution": "Assign Attribution",
+    "Attribution Audit": "Attribution Audit",
+    "Attribution Changes": "Attribution Changes",
+    "No attribution changes": "No attribution changes",
+    "Admin Bind": "Admin Bind",
+    "Self Bind": "Self Bind",
+    "Promotion": "Promotion",
+    "Promo Code": "Promo Code",
+    "Promotion Link": "Promotion Link",
+    "Total Customers": "Total Customers",
+    "Void Order": "Void Order",
+    "Void Reason": "Void Reason",
+    "Enter reason": "Enter reason",
+    "Enter void reason": "Enter void reason",
+    "Reason cannot be empty": "Reason cannot be empty",
+    "Order voided": "Order voided",
+    "Attribution updated": "Attribution updated",
+    "Void this order? The credited quota will be deducted and a reversal commission flow will be recorded.": "Void this order? The credited quota will be deducted and a reversal commission flow will be recorded."
   }
 }

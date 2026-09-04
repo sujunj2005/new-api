@@ -116,6 +116,21 @@ export async function fetchDistributorCustomerTopups(
   return res.data
 }
 
+/** B6 分销商资料（§4.2 B6 json tag 逐字；aff_link 为服务端拼好的完整链接，直用零加工） */
+export interface DistributorProfile {
+  aff_code: string
+  aff_link: string
+  customer_count: number
+}
+
+/** B6 分销商自己的资料（DistributorAuth 会话派生，零客户端参数） */
+export async function fetchDistributorProfile(): Promise<
+  ApiEnvelope<DistributorProfile>
+> {
+  const res = await api.get('/api/distributor/profile')
+  return res.data
+}
+
 /** 充值单五态（common/constants.go TopUpStatus* 逐字） */
 export type TopupStatus =
   | 'pending'

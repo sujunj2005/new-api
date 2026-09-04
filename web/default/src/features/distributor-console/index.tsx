@@ -46,6 +46,7 @@ import {
   type DistributorCustomerRow,
 } from './api'
 import { DashboardCards } from './components/dashboard-cards'
+import { PromoCard } from './components/promo-card'
 import { CustomerTopupsDialog } from './components/customer-topups-dialog'
 import {
   isDistributorSectionId,
@@ -160,7 +161,13 @@ export function DistributorConsole() {
             </TabsList>
           </Tabs>
 
-          {active === 'overview' && <DashboardCards refreshKey={refreshKey} />}
+          {active === 'overview' && (
+            <>
+              {/* G-4 推广卡（B6 aff_code/aff_link/客户数，四卡旁辅助信息卡） */}
+              <PromoCard refreshKey={refreshKey} />
+              <DashboardCards refreshKey={refreshKey} />
+            </>
+          )}
 
           {active === 'customers' && (
             <div className='flex flex-col gap-2'>

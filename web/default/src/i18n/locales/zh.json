@@ -5107,6 +5107,25 @@
     "Distributor ID cannot be empty": "分销商ID不能为空",
     "Rate cannot be empty": "比例不能为空",
     "Rate must be a non-negative integer": "比例必须为非负整数",
-    "Operator": "操作人"
+    "Operator": "操作人",
+    "Customer List": "客户列表",
+    "Assign Attribution": "指定归属",
+    "Attribution Audit": "归属审计",
+    "Attribution Changes": "归属变更",
+    "No attribution changes": "暂无归属变更",
+    "Admin Bind": "管理员绑定",
+    "Self Bind": "自助绑定",
+    "Promotion": "推广",
+    "Promo Code": "推广码",
+    "Promotion Link": "推广链接",
+    "Total Customers": "客户数",
+    "Void Order": "作废",
+    "Void Reason": "作废原因",
+    "Enter reason": "请输入原因",
+    "Enter void reason": "请输入作废原因",
+    "Reason cannot be empty": "原因不能为空",
+    "Order voided": "作废成功",
+    "Attribution updated": "归属已更新",
+    "Void this order? The credited quota will be deducted and a reversal commission flow will be recorded.": "作废后系统将扣回已到账额度并记录负数冲销流水，该操作不可撤销。"
   }
 }

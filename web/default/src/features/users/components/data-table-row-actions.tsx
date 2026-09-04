@@ -28,6 +28,9 @@ import {
   ShieldAlert,
   Link2,
   CreditCard,
+  Users,
+  UserPlus,
+  History,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -58,6 +61,9 @@ import {
 import { getUserActionMessage } from '../lib'
 import type { User, ManageUserAction } from '../types'
 import { UserBindingDialog } from './dialogs/user-binding-dialog'
+import { AttributionBindDialog } from './dialogs/attribution-bind-dialog'
+import { DistributorCustomersDialog } from './dialogs/distributor-customers-dialog'
+import { AttributionChangesSheet } from './attribution-changes-sheet'
 import { useUsers } from './users-provider'
 
 interface DataTableRowActionsProps {
@@ -72,6 +78,9 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const [resetTwoFAOpen, setResetTwoFAOpen] = useState(false)
   const [bindingDialogOpen, setBindingDialogOpen] = useState(false)
   const [subscriptionsDialogOpen, setSubscriptionsDialogOpen] = useState(false)
+  const [customersDialogOpen, setCustomersDialogOpen] = useState(false)
+  const [bindDialogOpen, setBindDialogOpen] = useState(false)
+  const [auditSheetOpen, setAuditSheetOpen] = useState(false)
 
   const handleEdit = () => {
     setCurrentRow(user)
@@ -222,6 +231,47 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           </DropdownMenuShortcut>
         </DropdownMenuItem>
 
+        {/* G-1 客户列表（仅 role=5 分销商行，B7 契约附录 G） */}
+        {user.role === USER_ROLE.DISTRIBUTOR && (
+          <DropdownMenuItem
+            onSelect={(event) => {
+              event.preventDefault()
+              setCustomersDialogOpen(true)
+            }}
+          >
+            {t('Customer List')}
+            <DropdownMenuShortcut>
+              <Users size={16} />
+            </DropdownMenuShortcut>
+          </DropdownMenuItem>
+        )}
+
+        {/* G-2 指定归属（对任意用户可用，B2 RootAuth） */}
+        <DropdownMenuItem
+          onSelect={(event) => {
+            event.preventDefault()
+            setBindDialogOpen(true)
+          }}
+        >
+          {t('Assign Attribution')}
+          <DropdownMenuShortcut>
+            <UserPlus size={16} />
+          </DropdownMenuShortcut>
+        </DropdownMenuItem>
+
+        {/* G-3 归属审计（B3 AdminAuth，按该用户过滤） */}
+        <DropdownMenuItem
+          onSelect={(event) => {
+            event.preventDefault()
+            setAuditSheetOpen(true)
+          }}
+        >
+          {t('Attribution Audit')}
+          <DropdownMenuShortcut>
+            <History size={16} />
+          </DropdownMenuShortcut>
+        </DropdownMenuItem>
+
         <DropdownMenuSeparator />
 
         <DropdownMenuItem
@@ -300,6 +350,31 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         onOpenChange={setSubscriptionsDialogOpen}
         user={{ id: user.id, username: user.username }}
         onSuccess={triggerRefresh}
+      />
+
+      {/* G-1 客户列表弹窗（B7，行形状与 B4 一致） */}
+      <DistributorCustomersDialog
+        open={customersDialogOpen}
+        distributorId={user.id}
+        distributorUsername={user.username}
+        onOpenChange={setCustomersDialogOpen}
+      />
+
+      {/* G-2 指定归属弹窗（B2，成功后刷新列表） */}
+      <AttributionBindDialog
+        open={bindDialogOpen}
+        userId={user.id}
+        username={user.username}
+        onOpenChange={setBindDialogOpen}
+        onSuccess={triggerRefresh}
+      />
+
+      {/* G-3 归属审计抽屉（B3 user_id 过滤） */}
+      <AttributionChangesSheet
+        open={auditSheetOpen}
+        userId={user.id}
+        username={user.username}
+        onOpenChange={setAuditSheetOpen}
       />
     </div>
   )

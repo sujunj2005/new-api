@@ -19,6 +19,9 @@ For commercial licensing, please contact support@quantumnous.com
 import { Search, Copy, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
+import { api } from '@/lib/api'
 
 import { Dialog } from '@/components/dialog'
 import { StatusBadge } from '@/components/status-badge'
@@ -49,6 +52,7 @@ import { formatCurrencyFromUSD } from '@/lib/currency'
 import { formatNumber } from '@/lib/format'
 
 import { useBillingHistory } from '../../hooks/use-billing-history'
+import { isApiSuccess } from '../../api'
 import {
   getStatusConfig,
   getPaymentMethodName,
@@ -78,9 +82,15 @@ export function BillingHistoryDialog({
     handlePageSizeChange,
     handleSearch,
     handleCompleteOrder,
+    refresh,
   } = useBillingHistory()
 
   const [confirmTradeNo, setConfirmTradeNo] = useState<string | null>(null)
+  // G-5 作废（A13 POST /api/topup/:tradeNo/void，RootAuth；reason 必填审计留痕）
+  const [voidTradeNo, setVoidTradeNo] = useState<string | null>(null)
+  const [voidReason, setVoidReason] = useState('')
+  const [voidError, setVoidError] = useState('')
+  const [voiding, setVoiding] = useState(false)
   const { copyToClipboard, copiedText } = useCopyToClipboard({ notify: false })
 
   const totalPages = Math.ceil(total / pageSize)
@@ -91,6 +101,35 @@ export function BillingHistoryDialog({
       if (success) {
         setConfirmTradeNo(null)
       }
+    }
+  }
+
+  const handleConfirmVoid = async () => {
+    if (!voidTradeNo) return
+    const trimmed = voidReason.trim()
+    if (!trimmed) {
+      setVoidError(t('Reason cannot be empty'))
+      return
+    }
+    setVoiding(true)
+    setVoidError('')
+    try {
+      // A13 契约附录 C1 冻结形状：POST /api/topup/:tradeNo/void {"reason"}
+      // 失败信封 message 原样回显（状态非法/已出账回滚/重复作废等服务端文案）
+      const res = await api.post(`/api/topup/${voidTradeNo}/void`, {
+        reason: trimmed,
+      })
+      if (isApiSuccess(res.data)) {
+        toast.success(t('Order voided'))
+        setVoidTradeNo(null)
+        setVoidReason('')
+        refresh()
+      } else {
+        const envelope = res.data as { message?: string }
+        setVoidError(envelope.message || t('Request failed'))
+      }
+    } finally {
+      setVoiding(false)
     }
   }
 
@@ -259,18 +298,36 @@ export function BillingHistoryDialog({
                       </div>
 
                       {/* Admin Actions */}
-                      {isAdmin && record.status === 'pending' && (
-                        <div className='mt-4 flex justify-end'>
-                          <Button
-                            size='sm'
-                            variant='outline'
-                            onClick={() => setConfirmTradeNo(record.trade_no)}
-                            disabled={completing}
-                          >
-                            {t('Complete Order')}
-                          </Button>
+                      {(isAdmin && record.status === 'pending') ||
+                      (isAdmin && record.status === 'success') ? (
+                        <div className='mt-4 flex justify-end gap-2'>
+                          {record.status === 'success' && (
+                            <Button
+                              size='sm'
+                              variant='outline'
+                              className='text-destructive hover:text-destructive'
+                              onClick={() => {
+                                setVoidReason('')
+                                setVoidError('')
+                                setVoidTradeNo(record.trade_no)
+                              }}
+                              disabled={voiding}
+                            >
+                              {t('Void Order')}
+                            </Button>
+                          )}
+                          {record.status === 'pending' && (
+                            <Button
+                              size='sm'
+                              variant='outline'
+                              onClick={() => setConfirmTradeNo(record.trade_no)}
+                              disabled={completing}
+                            >
+                              {t('Complete Order')}
+                            </Button>
+                          )}
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   )
                 })}
@@ -338,6 +395,49 @@ export function BillingHistoryDialog({
               disabled={completing}
             >
               {completing ? t('Processing...') : t('Confirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* G-5 Confirm Void Order Dialog（A13，reason 必填） */}
+      <AlertDialog
+        open={!!voidTradeNo}
+        onOpenChange={(open) => {
+          if (!open) {
+            setVoidTradeNo(null)
+            setVoidReason('')
+            setVoidError('')
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('Void Order')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                'Void this order? The credited quota will be deducted and a reversal commission flow will be recorded.'
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className='flex flex-col gap-1.5'>
+            <Label htmlFor='void-reason'>{t('Void Reason')}</Label>
+            <Input
+              id='void-reason'
+              placeholder={t('Enter void reason')}
+              value={voidReason}
+              onChange={(e) => setVoidReason(e.target.value)}
+            />
+            {voidError && (
+              <div className='text-destructive text-sm'>{voidError}</div>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={voiding}>
+              {t('Cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmVoid} disabled={voiding}>
+              {voiding ? t('Processing...') : t('Confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
