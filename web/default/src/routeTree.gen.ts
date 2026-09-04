@@ -55,6 +55,7 @@ import { Route as AuthenticatedChannelsIndexRouteImport } from './routes/_authen
 import { Route as AuthenticatedUsageLogsSectionRouteImport } from './routes/_authenticated/usage-logs/$section'
 import { Route as AuthenticatedModelsSectionRouteImport } from './routes/_authenticated/models/$section'
 import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
+import { Route as AuthenticatedDistributorSectionRouteImport } from './routes/_authenticated/distributor/$section'
 import { Route as AuthenticatedDashboardSectionRouteImport } from './routes/_authenticated/dashboard/$section'
 import { Route as AuthenticatedCommissionWithdrawalsSectionRouteImport } from './routes/_authenticated/commission-withdrawals/$section'
 import { Route as AuthenticatedCommissionStatementsSectionRouteImport } from './routes/_authenticated/commission-statements/$section'
@@ -321,6 +322,12 @@ const AuthenticatedErrorsErrorRoute =
     path: '/errors/$error',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedDistributorSectionRoute =
+  AuthenticatedDistributorSectionRouteImport.update({
+    id: '/distributor/$section',
+    path: '/distributor/$section',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardSectionRoute =
   AuthenticatedDashboardSectionRouteImport.update({
     id: '/dashboard/$section',
@@ -464,6 +471,7 @@ export interface FileRoutesByFullPath {
   '/commission-statements/$section': typeof AuthenticatedCommissionStatementsSectionRoute
   '/commission-withdrawals/$section': typeof AuthenticatedCommissionWithdrawalsSectionRoute
   '/dashboard/$section': typeof AuthenticatedDashboardSectionRoute
+  '/distributor/$section': typeof AuthenticatedDistributorSectionRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/models/$section': typeof AuthenticatedModelsSectionRoute
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
@@ -528,6 +536,7 @@ export interface FileRoutesByTo {
   '/commission-statements/$section': typeof AuthenticatedCommissionStatementsSectionRoute
   '/commission-withdrawals/$section': typeof AuthenticatedCommissionWithdrawalsSectionRoute
   '/dashboard/$section': typeof AuthenticatedDashboardSectionRoute
+  '/distributor/$section': typeof AuthenticatedDistributorSectionRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/models/$section': typeof AuthenticatedModelsSectionRoute
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
@@ -596,6 +605,7 @@ export interface FileRoutesById {
   '/_authenticated/commission-statements/$section': typeof AuthenticatedCommissionStatementsSectionRoute
   '/_authenticated/commission-withdrawals/$section': typeof AuthenticatedCommissionWithdrawalsSectionRoute
   '/_authenticated/dashboard/$section': typeof AuthenticatedDashboardSectionRoute
+  '/_authenticated/distributor/$section': typeof AuthenticatedDistributorSectionRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/_authenticated/models/$section': typeof AuthenticatedModelsSectionRoute
   '/_authenticated/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
@@ -663,6 +673,7 @@ export interface FileRouteTypes {
     | '/commission-statements/$section'
     | '/commission-withdrawals/$section'
     | '/dashboard/$section'
+    | '/distributor/$section'
     | '/errors/$error'
     | '/models/$section'
     | '/usage-logs/$section'
@@ -727,6 +738,7 @@ export interface FileRouteTypes {
     | '/commission-statements/$section'
     | '/commission-withdrawals/$section'
     | '/dashboard/$section'
+    | '/distributor/$section'
     | '/errors/$error'
     | '/models/$section'
     | '/usage-logs/$section'
@@ -794,6 +806,7 @@ export interface FileRouteTypes {
     | '/_authenticated/commission-statements/$section'
     | '/_authenticated/commission-withdrawals/$section'
     | '/_authenticated/dashboard/$section'
+    | '/_authenticated/distributor/$section'
     | '/_authenticated/errors/$error'
     | '/_authenticated/models/$section'
     | '/_authenticated/usage-logs/$section'
@@ -1175,6 +1188,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedErrorsErrorRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/distributor/$section': {
+      id: '/_authenticated/distributor/$section'
+      path: '/distributor/$section'
+      fullPath: '/distributor/$section'
+      preLoaderRoute: typeof AuthenticatedDistributorSectionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard/$section': {
       id: '/_authenticated/dashboard/$section'
       path: '/dashboard/$section'
@@ -1401,6 +1421,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCommissionStatementsSectionRoute: typeof AuthenticatedCommissionStatementsSectionRoute
   AuthenticatedCommissionWithdrawalsSectionRoute: typeof AuthenticatedCommissionWithdrawalsSectionRoute
   AuthenticatedDashboardSectionRoute: typeof AuthenticatedDashboardSectionRoute
+  AuthenticatedDistributorSectionRoute: typeof AuthenticatedDistributorSectionRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
   AuthenticatedModelsSectionRoute: typeof AuthenticatedModelsSectionRoute
   AuthenticatedUsageLogsSectionRoute: typeof AuthenticatedUsageLogsSectionRoute
@@ -1431,6 +1452,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCommissionWithdrawalsSectionRoute:
     AuthenticatedCommissionWithdrawalsSectionRoute,
   AuthenticatedDashboardSectionRoute: AuthenticatedDashboardSectionRoute,
+  AuthenticatedDistributorSectionRoute: AuthenticatedDistributorSectionRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
   AuthenticatedModelsSectionRoute: AuthenticatedModelsSectionRoute,
   AuthenticatedUsageLogsSectionRoute: AuthenticatedUsageLogsSectionRoute,
