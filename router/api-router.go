@@ -1,8 +1,6 @@
 package router
 
 import (
-	"net/http"
-
 	"github.com/QuantumNous/new-api/controller"
 	"github.com/QuantumNous/new-api/middleware"
 
@@ -233,19 +231,13 @@ func SetApiRouter(router *gin.Engine) {
 		// ========================================================================
 		// Phase 2: 分销商角色与客户归属地基地基路由
 		// B 域（B1-B6）：02-03 已替换为真实 controller（本 plan 交付）。
-		// A 域：A1-A3 已由 03-02 替换为真实 controller；A4-A8/A9-A12 保持
-		// notImplemented 占位（Phase 4/6 范围）。
+		// A 域：A1-A3 已由 03-02 替换为真实 controller；A4-A8 已由 04-02/04-03 替换为
+		// 真实 controller；A9-A12 已由 06-01 替换为真实 controller（占位全部退役）。
 		// 权限模型（契约 §2.2 + §4.2/4.3）：
 		//   - 分销商侧（B4/B5/B6/A9/A10/A11/A12）→ DistributorAuth 精确匹配 role==5
 		//   - 管理员侧（A1/A2/A3/A4/A5/A6/A7/A8/B3）→ AdminAuth 阈值 minRole=10
 		//   - 超管侧（A7/A8/B2）→ RootAuth 阈值 minRole=100
 		// ========================================================================
-		notImplemented := func(c *gin.Context) {
-			c.JSON(http.StatusNotImplemented, gin.H{
-				"success": false,
-				"message": "not implemented",
-			})
-		}
 
 		// B1 自助补绑（UserAuth，挂 selfRoute 同级，便于复用 session 用户身份）
 		apiRouter.POST("/user/aff_rebind", middleware.UserAuth(), controller.AffRebind)
@@ -270,10 +262,10 @@ func SetApiRouter(router *gin.Engine) {
 		commissionRoute := apiRouter.Group("/commission")
 		{
 			// 分销商侧（A9/A10/A11/A12）——精确匹配 role==5
-			commissionRoute.GET("/dashboard", middleware.DistributorAuth(), notImplemented)                       // A9 GET /api/commission/dashboard
+			commissionRoute.GET("/dashboard", middleware.DistributorAuth(), controller.GetCommissionDashboard)                      // A9 GET /api/commission/dashboard 佣金仪表盘（§4.3 + 附录 F2 笔数）
 			commissionRoute.GET("/statements/self", middleware.DistributorAuth(), controller.GetSelfCommissionStatements)           // A10 GET /api/commission/statements/self 分销商账单列表（仅本人）
 			commissionRoute.GET("/statements/self/:id/items", middleware.DistributorAuth(), controller.GetSelfCommissionStatementItems) // A11 GET /api/commission/statements/self/:id/items 分销商账单明细（归属校验）
-			commissionRoute.GET("/current", middleware.DistributorAuth(), notImplemented)                         // A12 GET /api/commission/current
+			commissionRoute.GET("/current", middleware.DistributorAuth(), controller.GetCurrentCommission)                          // A12 GET /api/commission/current 未出账实时预览
 
 			// 管理员侧（A1/A2/A3/A4/A5/A6）——阈值 minRole=10
 			commissionRoute.GET("/rates", middleware.AdminAuth(), controller.GetCommissionRates)                             // A1 GET /api/commission/rates 比例列表

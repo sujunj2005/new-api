@@ -62,7 +62,8 @@ func dashRequireOK(t *testing.T, w *httptest.ResponseRecorder) map[string]interf
 
 // TestCommissionDashboardAPI A9/A12 真实中间件路由集成（字段冻结 + 会话派生隔离 + 越权三形态 + A12 一致性）。
 func TestCommissionDashboardAPI(t *testing.T) {
-	setupStatementQueryTestDB(t)
+	// withdrawal 版 harness：母本 + 提现单表迁移（A9 聚合口径③查询提现单表，缺表必错）
+	setupWithdrawalTestDB(t)
 	r := newDashboardTestRouter()
 
 	distA := seedStmtUserWithToken(t, "dash_dist_a", common.RoleDistributorUser, "dash-dist-a-token")
