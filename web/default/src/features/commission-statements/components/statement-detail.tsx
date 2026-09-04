@@ -70,6 +70,15 @@ export function StatementDetail({ scope, statement, onClose }: StatementDetailPr
   const [itemsPage, setItemsPage] = useState(1)
   const [loading, setLoading] = useState(false)
 
+  // 切换账单目标（statement.id 变化）时重置分页与旧数据：本组件为非模态内联面板，
+  // 父级直接换 statement 复用同一实例，不重置会把 A 账单的旧页码/明细/调整单错挂到 B 账单标题下
+  useEffect(() => {
+    setItemsPage(1)
+    setItems([])
+    setItemsTotal(0)
+    setAdjustments([])
+  }, [statement.id])
+
   // adjustments 仅 admin 可取（A5 AdminAuth）；self 契约无对应端点，保持空数组
   useEffect(() => {
     if (scope !== 'admin') return
