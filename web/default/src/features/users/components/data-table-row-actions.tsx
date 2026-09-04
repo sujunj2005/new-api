@@ -50,6 +50,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { UserSubscriptionsDialog } from '@/features/subscriptions/components/dialogs/user-subscriptions-dialog'
+import { ROLE } from '@/lib/roles'
+import { useAuthStore } from '@/stores/auth-store'
 
 import { manageUser, resetUserPasskey, resetUserTwoFA } from '../api'
 import {
@@ -142,7 +144,11 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
 
   const isDisabled = user.status === USER_STATUS.DISABLED
   const isAdmin = user.role >= USER_ROLE.ADMIN
-  const isRoot = user.role === USER_ROLE.ROOT
+  // 行用户为 root（禁用对其的破坏性操作）
+  const isRootUser = user.role === USER_ROLE.ROOT
+  // Obs-2：查看者为 root（B2 指定归属 RootAuth——非 root admin 的死入口收窄）
+  const currentUser = useAuthStore((s) => s.auth.user)
+  const isRoot = currentUser?.role === ROLE.SUPER_ADMIN
 
   if (isUserDeleted(user)) {
     return null
@@ -180,7 +186,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         ) : (
           <DropdownMenuItem
             onClick={() => handleManage('disable')}
-            disabled={isRoot}
+            disabled={isRootUser}
           >
             {t('Disable')}
             <DropdownMenuShortcut>
@@ -189,7 +195,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           </DropdownMenuItem>
         )}
 
-        {isAdmin && !isRoot && (
+        {isAdmin && !isRootUser && (
           <DropdownMenuItem onClick={() => handleManage('demote')}>
             {t('Demote')}
             <DropdownMenuShortcut>
@@ -246,18 +252,20 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
           </DropdownMenuItem>
         )}
 
-        {/* G-2 指定归属（对任意用户可用，B2 RootAuth） */}
-        <DropdownMenuItem
-          onSelect={(event) => {
-            event.preventDefault()
-            setBindDialogOpen(true)
-          }}
-        >
-          {t('Assign Attribution')}
-          <DropdownMenuShortcut>
-            <UserPlus size={16} />
-          </DropdownMenuShortcut>
-        </DropdownMenuItem>
+        {/* G-2 指定归属（B2 RootAuth，Obs-2：仅 root 查看者可见——服务端拒绝已存在，此处消死入口） */}
+        {isRoot && (
+          <DropdownMenuItem
+            onSelect={(event) => {
+              event.preventDefault()
+              setBindDialogOpen(true)
+            }}
+          >
+            {t('Assign Attribution')}
+            <DropdownMenuShortcut>
+              <UserPlus size={16} />
+            </DropdownMenuShortcut>
+          </DropdownMenuItem>
+        )}
 
         {/* G-3 归属审计（B3 AdminAuth，按该用户过滤） */}
         <DropdownMenuItem
@@ -279,7 +287,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             event.preventDefault()
             setResetPasskeyOpen(true)
           }}
-          disabled={isRoot}
+          disabled={isRootUser}
         >
           {t('Reset Passkey')}
           <DropdownMenuShortcut>
@@ -292,7 +300,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             event.preventDefault()
             setResetTwoFAOpen(true)
           }}
-          disabled={isRoot}
+          disabled={isRootUser}
         >
           {t('Reset 2FA')}
           <DropdownMenuShortcut>
@@ -305,7 +313,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
         <DropdownMenuItem
           onClick={handleDelete}
           className='text-destructive focus:text-destructive'
-          disabled={isRoot}
+          disabled={isRootUser}
         >
           {t('Delete')}
           <DropdownMenuShortcut>

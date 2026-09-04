@@ -50,6 +50,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { formatCurrencyFromUSD } from '@/lib/currency'
 import { formatNumber } from '@/lib/format'
+import { ROLE } from '@/lib/roles'
+import { useAuthStore } from '@/stores/auth-store'
 
 import { useBillingHistory } from '../../hooks/use-billing-history'
 import { isApiSuccess } from '../../api'
@@ -86,6 +88,9 @@ export function BillingHistoryDialog({
   } = useBillingHistory()
 
   const [confirmTradeNo, setConfirmTradeNo] = useState<string | null>(null)
+  // Obs-2：Void（A13 RootAuth）入口仅 root 查看者可见（禁改 hook 签名，组件内自取会话角色）
+  const currentUser = useAuthStore((s) => s.auth.user)
+  const isRoot = currentUser?.role === ROLE.SUPER_ADMIN
   // G-5 作废（A13 POST /api/topup/:tradeNo/void，RootAuth；reason 必填审计留痕）
   const [voidTradeNo, setVoidTradeNo] = useState<string | null>(null)
   const [voidReason, setVoidReason] = useState('')
@@ -298,8 +303,9 @@ export function BillingHistoryDialog({
                       </div>
 
                       {/* Admin Actions */}
+                      {/* Obs-2：Void（A13 RootAuth）仅 root 查看者可见；Complete Order 保持 admin（AdminAuth 端点，零误伤） */}
                       {(isAdmin && record.status === 'pending') ||
-                      (isAdmin && record.status === 'success') ? (
+                      (isRoot && record.status === 'success') ? (
                         <div className='mt-4 flex justify-end gap-2'>
                           {record.status === 'success' && (
                             <Button
