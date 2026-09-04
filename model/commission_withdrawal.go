@@ -145,15 +145,17 @@ func AcceptWithdrawalTx(id int64, operatorId int) (*CommissionWithdrawal, error)
 
 // RejectWithdrawalTx A19 驳回（仅 reviewing 可发起，Q2=B；终态留原因 D-06）+
 // 同事务账单 withdrawing→payable 回退（D-05，漏断言 = 永久 withdrawing 死单，Pitfall 2）。
-func RejectWithdrawalTx(id int64, reason string, operatorId int) error {
+// 返回迁移后的提现单行（controller 事务外审计嵌 withdrawal_no，与其他三个管理 Tx 签名一致）。
+func RejectWithdrawalTx(id int64, reason string, operatorId int) (*CommissionWithdrawal, error) {
 	reason = strings.TrimSpace(reason)
 	if reason == "" {
-		return errors.New("驳回原因必填") // model 侧保险（controller 已前置拦截）
+		return nil, errors.New("驳回原因必填") // model 侧保险（controller 已前置拦截）
 	}
 	if utf8.RuneCountInString(reason) > 255 {
-		return errors.New("驳回原因长度不能超过 255 字符")
+		return nil, errors.New("驳回原因长度不能超过 255 字符")
 	}
-	return DB.Transaction(func(tx *gorm.DB) error {
+	var updated *CommissionWithdrawal
+	err := DB.Transaction(func(tx *gorm.DB) error {
 		wd, err := lockWithdrawal(tx, id)
 		if err != nil {
 			return err
@@ -170,8 +172,15 @@ func RejectWithdrawalTx(id int64, reason string, operatorId int) error {
 			return err
 		}
 		// 账单回退（D-05）：同事务条件更新 + 断言
-		return flipStatementStatus(tx, wd.StatementId, StatementWithdrawing, StatementPayable)
+		if err := flipStatementStatus(tx, wd.StatementId, StatementWithdrawing, StatementPayable); err != nil {
+			return err
+		}
+		wd.Status = WithdrawalRejected
+		wd.Reason = reason
+		updated = wd
+		return nil
 	})
+	return updated, err
 }
 
 // ApproveWithdrawalTx A20 批准（reviewing→approved，账单零操作——D-12 approved 期间 withdrawing 保持）。

@@ -144,7 +144,8 @@ func TestWithdrawalApply(t *testing.T) {
 		require.NoError(t, err)
 		_, err = AcceptWithdrawalTx(wd1.Id, 9)
 		require.NoError(t, err)
-		require.NoError(t, RejectWithdrawalTx(wd1.Id, "凭证信息不符", 9))
+		_, err = RejectWithdrawalTx(wd1.Id, "凭证信息不符", 9)
+		require.NoError(t, err)
 		require.Equal(t, StatementPayable, reloadStatement(t, stmt.Id).Status, "驳回回退 payable（D-05）")
 
 		// D-06 回路：重新申请 = 新建第二条提现单（历史单不复用）
@@ -194,7 +195,8 @@ func TestWithdrawalStateMachine(t *testing.T) {
 		_, err = AcceptWithdrawalTx(wd.Id, 9)
 		require.NoError(t, err)
 
-		require.NoError(t, RejectWithdrawalTx(wd.Id, "资料有误", 9))
+		_, err = RejectWithdrawalTx(wd.Id, "资料有误", 9)
+		require.NoError(t, err)
 		got := reloadWithdrawal(t, wd.Id)
 		require.Equal(t, WithdrawalRejected, got.Status)
 		require.Equal(t, "资料有误", got.Reason)
@@ -248,18 +250,18 @@ func TestWithdrawalStateMachine(t *testing.T) {
 			seed   string
 			action func(id int64) error
 		}{
-			{"pending_direct_reject", WithdrawalPending, func(id int64) error { return RejectWithdrawalTx(id, "测试原因", 9) }},
+			{"pending_direct_reject", WithdrawalPending, func(id int64) error { _, err := RejectWithdrawalTx(id, "测试原因", 9); return err }},
 			{"pending_direct_approve", WithdrawalPending, func(id int64) error { _, err := ApproveWithdrawalTx(id, 9); return err }},
 			{"pending_direct_paid", WithdrawalPending, func(id int64) error { _, err := MarkWithdrawalPaidTx(id, "V-1", 9); return err }},
 			{"reviewing_direct_paid_skips_approved", WithdrawalReviewing, func(id int64) error { _, err := MarkWithdrawalPaidTx(id, "V-1", 9); return err }},
-			{"approved_rejected", WithdrawalApproved, func(id int64) error { return RejectWithdrawalTx(id, "测试原因", 9) }},
+			{"approved_rejected", WithdrawalApproved, func(id int64) error { _, err := RejectWithdrawalTx(id, "测试原因", 9); return err }},
 			{"approved_approve_again", WithdrawalApproved, func(id int64) error { _, err := ApproveWithdrawalTx(id, 9); return err }},
 			{"rejected_accept", WithdrawalRejected, func(id int64) error { _, err := AcceptWithdrawalTx(id, 9); return err }},
 			{"rejected_approve", WithdrawalRejected, func(id int64) error { _, err := ApproveWithdrawalTx(id, 9); return err }},
 			{"rejected_paid", WithdrawalRejected, func(id int64) error { _, err := MarkWithdrawalPaidTx(id, "V-1", 9); return err }},
 			{"paid_accept", WithdrawalPaid, func(id int64) error { _, err := AcceptWithdrawalTx(id, 9); return err }},
 			{"paid_approve", WithdrawalPaid, func(id int64) error { _, err := ApproveWithdrawalTx(id, 9); return err }},
-			{"paid_reject", WithdrawalPaid, func(id int64) error { return RejectWithdrawalTx(id, "测试原因", 9) }},
+			{"paid_reject", WithdrawalPaid, func(id int64) error { _, err := RejectWithdrawalTx(id, "测试原因", 9); return err }},
 			{"paid_paid_again", WithdrawalPaid, func(id int64) error { _, err := MarkWithdrawalPaidTx(id, "V-2", 9); return err }},
 		}
 		for _, tc := range cases {
@@ -288,11 +290,11 @@ func TestWithdrawalStateMachine(t *testing.T) {
 	t.Run("reason_and_voucher_double_validation", func(t *testing.T) {
 		setupCommissionTestDB(t)
 
-		err := RejectWithdrawalTx(1, "", 9)
+		_, err := RejectWithdrawalTx(1, "", 9)
 		require.ErrorContains(t, err, "驳回原因必填")
-		err = RejectWithdrawalTx(1, "   ", 9)
+		_, err = RejectWithdrawalTx(1, "   ", 9)
 		require.ErrorContains(t, err, "驳回原因必填")
-		err = RejectWithdrawalTx(1, strings.Repeat("字", 256), 9)
+		_, err = RejectWithdrawalTx(1, strings.Repeat("字", 256), 9)
 		require.ErrorContains(t, err, "长度不能超过 255")
 
 		_, err = MarkWithdrawalPaidTx(1, "", 9)
