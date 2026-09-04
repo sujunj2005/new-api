@@ -60,6 +60,8 @@ export interface StatementItemWithUsername {
   customer_id: number
   complete_time: number
   username: string
+  /** 契约 v1.5 附录 F1：比例快照（万分比），经流水表关联冗余；无关联流水（flow_id=0/人工/冲销）为 0 */
+  rate_bp: number
 }
 
 export interface StatementSummaryItem {

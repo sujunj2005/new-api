@@ -36,6 +36,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 
+import { rateBpToPercent } from '@/features/commission-rates/api'
+
 import {
   fetchStatementDetail,
   fetchStatementItems,
@@ -58,7 +60,7 @@ interface StatementDetailProps {
 
 /**
  * 账单详情（A5/A6）：本体字段 + adjustments 时间线（仅 admin）+ 充值明细分页表
- * （单号/支付方式/充值金额/佣金金额/客户/到账时间）。最小只读，无调账操作（A7/A8 UI 不在本期）。
+ * （单号/支付方式/充值金额/佣金金额/客户/比例/到账时间）。最小只读，无调账操作（A7/A8 UI 不在本期）。
  */
 export function StatementDetail({ scope, statement, onClose }: StatementDetailProps) {
   const { t } = useTranslation()
@@ -190,13 +192,14 @@ export function StatementDetail({ scope, statement, onClose }: StatementDetailPr
               <TableHead>{t('Topup Amount')}</TableHead>
               <TableHead>{t('Commission Amount')}</TableHead>
               <TableHead>{t('Customer')}</TableHead>
+              <TableHead>{t('Rate')}</TableHead>
               <TableHead>{t('Complete Time')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className='h-16 text-center'>
+                <TableCell colSpan={7} className='h-16 text-center'>
                   {t('No statements found')}
                 </TableCell>
               </TableRow>
@@ -208,6 +211,10 @@ export function StatementDetail({ scope, statement, onClose }: StatementDetailPr
                   <TableCell>{formatCents(item.topup_money_cents)}</TableCell>
                   <TableCell>{formatCents(item.commission_cents)}</TableCell>
                   <TableCell>{item.username || item.customer_id}</TableCell>
+                  {/* 比例列（SC-7）：双 scope 均显示零分支；无关联流水为 0 时展示占位符；换算走唯一函数禁内联 */}
+                  <TableCell>
+                    {item.rate_bp ? rateBpToPercent(item.rate_bp) : '-'}
+                  </TableCell>
                   <TableCell>{formatUnixTime(item.complete_time)}</TableCell>
                 </TableRow>
               ))

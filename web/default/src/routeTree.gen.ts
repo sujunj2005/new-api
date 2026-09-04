@@ -51,6 +51,7 @@ import { Route as AuthenticatedDistributorIndexRouteImport } from './routes/_aut
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
 import { Route as AuthenticatedCommissionWithdrawalsIndexRouteImport } from './routes/_authenticated/commission-withdrawals/index'
 import { Route as AuthenticatedCommissionStatementsIndexRouteImport } from './routes/_authenticated/commission-statements/index'
+import { Route as AuthenticatedCommissionRatesIndexRouteImport } from './routes/_authenticated/commission-rates/index'
 import { Route as AuthenticatedChannelsIndexRouteImport } from './routes/_authenticated/channels/index'
 import { Route as AuthenticatedUsageLogsSectionRouteImport } from './routes/_authenticated/usage-logs/$section'
 import { Route as AuthenticatedModelsSectionRouteImport } from './routes/_authenticated/models/$section'
@@ -298,6 +299,12 @@ const AuthenticatedCommissionStatementsIndexRoute =
     path: '/commission-statements/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCommissionRatesIndexRoute =
+  AuthenticatedCommissionRatesIndexRouteImport.update({
+    id: '/commission-rates/',
+    path: '/commission-rates/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedChannelsIndexRoute =
   AuthenticatedChannelsIndexRouteImport.update({
     id: '/channels/',
@@ -476,6 +483,7 @@ export interface FileRoutesByFullPath {
   '/models/$section': typeof AuthenticatedModelsSectionRoute
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/channels/': typeof AuthenticatedChannelsIndexRoute
+  '/commission-rates/': typeof AuthenticatedCommissionRatesIndexRoute
   '/commission-statements/': typeof AuthenticatedCommissionStatementsIndexRoute
   '/commission-withdrawals/': typeof AuthenticatedCommissionWithdrawalsIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
@@ -541,6 +549,7 @@ export interface FileRoutesByTo {
   '/models/$section': typeof AuthenticatedModelsSectionRoute
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/channels': typeof AuthenticatedChannelsIndexRoute
+  '/commission-rates': typeof AuthenticatedCommissionRatesIndexRoute
   '/commission-statements': typeof AuthenticatedCommissionStatementsIndexRoute
   '/commission-withdrawals': typeof AuthenticatedCommissionWithdrawalsIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
@@ -610,6 +619,7 @@ export interface FileRoutesById {
   '/_authenticated/models/$section': typeof AuthenticatedModelsSectionRoute
   '/_authenticated/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/_authenticated/channels/': typeof AuthenticatedChannelsIndexRoute
+  '/_authenticated/commission-rates/': typeof AuthenticatedCommissionRatesIndexRoute
   '/_authenticated/commission-statements/': typeof AuthenticatedCommissionStatementsIndexRoute
   '/_authenticated/commission-withdrawals/': typeof AuthenticatedCommissionWithdrawalsIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
@@ -678,6 +688,7 @@ export interface FileRouteTypes {
     | '/models/$section'
     | '/usage-logs/$section'
     | '/channels/'
+    | '/commission-rates/'
     | '/commission-statements/'
     | '/commission-withdrawals/'
     | '/dashboard/'
@@ -743,6 +754,7 @@ export interface FileRouteTypes {
     | '/models/$section'
     | '/usage-logs/$section'
     | '/channels'
+    | '/commission-rates'
     | '/commission-statements'
     | '/commission-withdrawals'
     | '/dashboard'
@@ -811,6 +823,7 @@ export interface FileRouteTypes {
     | '/_authenticated/models/$section'
     | '/_authenticated/usage-logs/$section'
     | '/_authenticated/channels/'
+    | '/_authenticated/commission-rates/'
     | '/_authenticated/commission-statements/'
     | '/_authenticated/commission-withdrawals/'
     | '/_authenticated/dashboard/'
@@ -1160,6 +1173,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCommissionStatementsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/commission-rates/': {
+      id: '/_authenticated/commission-rates/'
+      path: '/commission-rates'
+      fullPath: '/commission-rates/'
+      preLoaderRoute: typeof AuthenticatedCommissionRatesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/channels/': {
       id: '/_authenticated/channels/'
       path: '/channels'
@@ -1426,6 +1446,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedModelsSectionRoute: typeof AuthenticatedModelsSectionRoute
   AuthenticatedUsageLogsSectionRoute: typeof AuthenticatedUsageLogsSectionRoute
   AuthenticatedChannelsIndexRoute: typeof AuthenticatedChannelsIndexRoute
+  AuthenticatedCommissionRatesIndexRoute: typeof AuthenticatedCommissionRatesIndexRoute
   AuthenticatedCommissionStatementsIndexRoute: typeof AuthenticatedCommissionStatementsIndexRoute
   AuthenticatedCommissionWithdrawalsIndexRoute: typeof AuthenticatedCommissionWithdrawalsIndexRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
@@ -1457,6 +1478,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedModelsSectionRoute: AuthenticatedModelsSectionRoute,
   AuthenticatedUsageLogsSectionRoute: AuthenticatedUsageLogsSectionRoute,
   AuthenticatedChannelsIndexRoute: AuthenticatedChannelsIndexRoute,
+  AuthenticatedCommissionRatesIndexRoute:
+    AuthenticatedCommissionRatesIndexRoute,
   AuthenticatedCommissionStatementsIndexRoute:
     AuthenticatedCommissionStatementsIndexRoute,
   AuthenticatedCommissionWithdrawalsIndexRoute:
