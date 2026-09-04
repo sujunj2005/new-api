@@ -5126,6 +5126,26 @@
     "Reason cannot be empty": "Reason cannot be empty",
     "Order voided": "Order voided",
     "Attribution updated": "Attribution updated",
-    "Void this order? The credited quota will be deducted and a reversal commission flow will be recorded.": "Void this order? The credited quota will be deducted and a reversal commission flow will be recorded."
+    "Void this order? The credited quota will be deducted and a reversal commission flow will be recorded.": "Void this order? The credited quota will be deducted and a reversal commission flow will be recorded.",
+    "Manual Flow": "Manual Flow",
+    "Create a manual credit or debit commission flow for a distributor.": "Create a manual credit or debit commission flow for a distributor.",
+    "Manual Credit": "Manual Credit",
+    "Manual Debit": "Manual Debit",
+    "Flow Type": "Flow Type",
+    "Amount (cents)": "Amount (cents)",
+    "Enter amount in cents": "Enter amount in cents",
+    "Amount cannot be empty": "Amount cannot be empty",
+    "Amount must be a positive integer": "Amount must be a positive integer",
+    "Distributor ID must be a positive integer": "Distributor ID must be a positive integer",
+    "Manual flow created": "Manual flow created",
+    "Adjust Statement": "Adjust Statement",
+    "Adjust": "Adjust",
+    "Current Settle Amount": "Current Settle Amount",
+    "Delta (cents)": "Delta (cents)",
+    "Enter delta in cents": "Enter delta in cents",
+    "Positive increases, negative decreases": "Positive increases, negative decreases",
+    "Delta cannot be empty": "Delta cannot be empty",
+    "Delta must be a non-zero integer": "Delta must be a non-zero integer",
+    "Statement adjusted": "Statement adjusted"
   }
 }

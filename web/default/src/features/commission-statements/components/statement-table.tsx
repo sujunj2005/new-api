@@ -55,6 +55,8 @@ interface StatementTableProps {
   onOpenDetail?: (statement: CommissionStatement) => void
   /** Phase 5 additive：self 视角 payable 行「申请提现」回调（三条件齐备才渲染，undefined 时 admin 零影响，D4 禁复制派生） */
   onApplyWithdraw?: (statement: CommissionStatement) => void
+  /** 6.2 additive：admin 视角 payable 行「调整」回调（A8 RootAuth；undefined 时零影响） */
+  onAdjust?: (statement: CommissionStatement) => void
   /** Phase 5 additive：变更时重取列表（申请/驳回回退/打款结清后账单状态联动刷新，D-05） */
   refreshKey?: number
 }
@@ -68,6 +70,7 @@ export function StatementTable({
   distributorId,
   onOpenDetail,
   onApplyWithdraw,
+  onAdjust,
   refreshKey,
 }: StatementTableProps) {
   const { t } = useTranslation()
@@ -206,6 +209,18 @@ export function StatementTable({
                           onClick={() => onApplyWithdraw(row)}
                         >
                           {t('Apply Withdrawal')}
+                        </Button>
+                      )}
+                    {/* 6.2 additive：admin + payable + 回调齐备才出「调整」（A8 RootAuth，仅 root 查看者由组装点传回调） */}
+                    {scope === 'admin' &&
+                      row.status === 'payable' &&
+                      onAdjust && (
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() => onAdjust(row)}
+                        >
+                          {t('Adjust')}
                         </Button>
                       )}
                   </div>

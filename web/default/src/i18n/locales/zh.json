@@ -5126,6 +5126,26 @@
     "Reason cannot be empty": "原因不能为空",
     "Order voided": "作废成功",
     "Attribution updated": "归属已更新",
-    "Void this order? The credited quota will be deducted and a reversal commission flow will be recorded.": "作废后系统将扣回已到账额度并记录负数冲销流水，该操作不可撤销。"
+    "Void this order? The credited quota will be deducted and a reversal commission flow will be recorded.": "作废后系统将扣回已到账额度并记录负数冲销流水，该操作不可撤销。",
+    "Manual Flow": "人工补录流水",
+    "Create a manual credit or debit commission flow for a distributor.": "为分销商创建人工补录或冲销佣金流水。",
+    "Manual Credit": "人工补录",
+    "Manual Debit": "人工冲销",
+    "Flow Type": "流水类型",
+    "Amount (cents)": "金额（分）",
+    "Enter amount in cents": "请输入金额（分）",
+    "Amount cannot be empty": "金额不能为空",
+    "Amount must be a positive integer": "金额必须为正整数",
+    "Distributor ID must be a positive integer": "分销商ID必须为正整数",
+    "Manual flow created": "人工流水已创建",
+    "Adjust Statement": "调整账单",
+    "Adjust": "调整",
+    "Current Settle Amount": "当前结算金额",
+    "Delta (cents)": "调整额（分）",
+    "Enter delta in cents": "请输入调整额（分）",
+    "Positive increases, negative decreases": "正数为补增，负数为扣减",
+    "Delta cannot be empty": "调整额不能为空",
+    "Delta must be a non-zero integer": "调整额必须为非零整数",
+    "Statement adjusted": "账单已调整"
   }
 }

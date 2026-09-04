@@ -175,6 +175,49 @@ export async function fetchStatementSummary(
   return res.data
 }
 
+/** A7 流水类型（manual_credit 补录 / manual_debit 冲销，model 层白名单） */
+export type ManualFlowType = 'manual_credit' | 'manual_debit'
+
+/**
+ * A7 超管人工补录/冲销流水（RootAuth，契约 §4.3 冻结形状，勿增删字段）。
+ * amount_cents 恒正（debit 落库取负由服务端处理）；reason 必填审计留痕。
+ * 失败信封 message 原样回显（原因不能为空 / flow_type 白名单 / 目标角色校验文案）。
+ */
+export async function createManualFlow(
+  distributorId: number,
+  flowType: ManualFlowType,
+  amountCents: number,
+  reason: string
+): Promise<ApiEnvelope<null>> {
+  const res = await api.post('/api/commission/flows/manual', {
+    distributor_id: distributorId,
+    flow_type: flowType,
+    amount_cents: amountCents,
+    reason,
+  })
+  return res.data
+}
+
+/**
+ * A8 超管账单调整单（RootAuth，契约 §4.3 冻结形状，勿增删字段）。
+ * delta_cents 可负（正补负减）；仅 status=payable 可开（settled/withdrawing 服务端白名单拒绝）；
+ * 服务端按账单当前累计重算 settle 金额，不信任客户端。
+ */
+export async function createStatementAdjustment(
+  statementId: number,
+  deltaCents: number,
+  reason: string
+): Promise<ApiEnvelope<null>> {
+  const res = await api.post(
+    `/api/commission/statements/${statementId}/adjustments`,
+    {
+      delta_cents: deltaCents,
+      reason,
+    }
+  )
+  return res.data
+}
+
 /** 金额分 → 元展示（仅展示层换算；传输/运算层保持 int64 cents，禁浮点累积） */
 export function formatCents(cents: number): string {
   return (cents / 100).toLocaleString('zh-CN', {

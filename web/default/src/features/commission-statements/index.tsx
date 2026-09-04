@@ -21,9 +21,14 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { SectionPageLayout } from '@/components/layout'
+import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ROLE } from '@/lib/roles'
+import { useAuthStore } from '@/stores/auth-store'
 
 import type { CommissionStatement } from './api'
+import { ManualFlowDialog } from './components/manual-flow-dialog'
+import { StatementAdjustDialog } from './components/statement-adjust-dialog'
 import { StatementDetail } from './components/statement-detail'
 import { StatementSummary } from './components/statement-summary'
 import { StatementTable } from './components/statement-table'
@@ -56,6 +61,13 @@ export function CommissionStatements() {
     ? params.section
     : 'list'
   const [selected, setSelected] = useState<CommissionStatement | null>(null)
+  // 6.2 超管调账（A7/A8 RootAuth，Obs-1 补 UI 消费者；入口按 root 收窄，Obs-2 同口径）
+  const currentUser = useAuthStore((s) => s.auth.user)
+  const isRoot = currentUser?.role === ROLE.SUPER_ADMIN
+  const [manualFlowOpen, setManualFlowOpen] = useState(false)
+  const [adjustStatement, setAdjustStatement] =
+    useState<CommissionStatement | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   const handleSectionChange = useCallback(
     (section: string) => {
@@ -73,6 +85,14 @@ export function CommissionStatements() {
       <SectionPageLayout.Title>
         {t(SECTION_META[active].titleKey)}
       </SectionPageLayout.Title>
+      {/* Obs-1/Obs-2：A7 补录流水入口仅 root 查看者可见（RootAuth，非 root 的死入口不渲染） */}
+      {isRoot && (
+        <SectionPageLayout.Actions>
+          <Button size='sm' onClick={() => setManualFlowOpen(true)}>
+            {t('Manual Flow')}
+          </Button>
+        </SectionPageLayout.Actions>
+      )}
       <SectionPageLayout.Content>
         <div className='flex flex-col gap-4'>
           <Tabs value={active} onValueChange={handleSectionChange}>
@@ -91,6 +111,8 @@ export function CommissionStatements() {
               <StatementTable
                 scope='admin'
                 onOpenDetail={(statement) => setSelected(statement)}
+                onAdjust={isRoot ? setAdjustStatement : undefined}
+                refreshKey={refreshKey}
               />
               {selected && (
                 <StatementDetail
@@ -101,6 +123,20 @@ export function CommissionStatements() {
               )}
             </>
           )}
+
+          {/* A7/A8 弹窗常驻挂载（受控 open，非条件渲染——弹窗插槽纪律） */}
+          <ManualFlowDialog
+            open={manualFlowOpen}
+            onOpenChange={setManualFlowOpen}
+            onSuccess={() => setRefreshKey((k) => k + 1)}
+          />
+          <StatementAdjustDialog
+            statement={adjustStatement}
+            onOpenChange={(open) => {
+              if (!open) setAdjustStatement(null)
+            }}
+            onSuccess={() => setRefreshKey((k) => k + 1)}
+          />
         </div>
       </SectionPageLayout.Content>
     </SectionPageLayout>
