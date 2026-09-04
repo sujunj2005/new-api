@@ -491,6 +491,37 @@ func TestCommissionStatementQuery(t *testing.T) {
 		items := resp2["data"].(map[string]interface{})["items"].([]interface{})
 		require.Len(t, items, 2)
 	})
+
+	t.Run("rate_bp_join_propagation", func(t *testing.T) {
+		// 契约 v1.5 附录 F1：明细比例快照经 flow_id 关联佣金流水传播（A6/A11 消费同一查询函数）。
+		// 直插一条携带比例快照的流水（harness 已 AutoMigrate commission_flows），再把新明细的
+		// flow_id 更新指向它 → 查询结果该行比例快照为 500；
+		// 既有 FlowId=0 明细 LEFT JOIN 无匹配行 → 比例快照缺省 0。
+		flow := &model.CommissionFlow{
+			BillingNo:     "RB-FLOW-001",
+			FlowType:      model.CommissionFlowCommission,
+			CustomerId:    cust1.Id,
+			DistributorId: distA.Id,
+			AmountCents:   700,
+			RateBp:        500,
+			Status:        model.CommissionFlowAvailable,
+			Period:        "2026-07",
+		}
+		require.NoError(t, model.DB.Create(flow).Error)
+		item := seedStmtItem(t, s1.Id, "PAY-0703-003", "wxpay", 7000, 700, cust1.Id)
+		require.NoError(t, model.DB.Model(&model.CommissionStatementItem{}).
+			Where("id = ?", item.Id).Update("flow_id", flow.Id).Error)
+
+		details, total, err := model.ListStatementItems(s1.Id, 1, 10)
+		require.NoError(t, err)
+		require.Equal(t, int64(3), total, "原 2 条 + 新增 1 条")
+		rateByBilling := map[string]int{}
+		for _, d := range details {
+			rateByBilling[d.BillingNo] = d.RateBp
+		}
+		require.Equal(t, 500, rateByBilling["PAY-0703-003"], "flow 关联明细比例快照传播")
+		require.Equal(t, 0, rateByBilling["PAY-0701-001"], "FlowId=0 明细无匹配流水 → 比例快照 0")
+	})
 }
 
 // TestB4TotalCommission B4 total_commission_cents SUM(amount_cents) 聚合接线（契约附录 D5.3）：
