@@ -5092,6 +5092,21 @@
     "Topup Failed": "充值失败",
     "Topup Expired": "已过期",
     "Topup Refunded": "已退款",
-    "Unbilled Preview": "未出账实时预览"
+    "Unbilled Preview": "未出账实时预览",
+    "Commission Rates": "佣金比例",
+    "Rate": "比例",
+    "Set Rate": "设置比例",
+    "New Rate": "新设比例",
+    "Rate History": "变更历史",
+    "Rate (bp)": "比例（万分比）",
+    "No rates configured": "暂无比例配置",
+    "No rate history": "暂无变更历史",
+    "Rate updated": "比例已更新",
+    "Enter distributor ID": "请输入分销商ID",
+    "Enter rate in basis points": "请输入万分比（0~10000）",
+    "Distributor ID cannot be empty": "分销商ID不能为空",
+    "Rate cannot be empty": "比例不能为空",
+    "Rate must be a non-negative integer": "比例必须为非负整数",
+    "Operator": "操作人"
   }
 }

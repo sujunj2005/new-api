@@ -568,4 +568,11 @@ export const STATIC_I18N_KEYS = [
   'Topup Failed',
   'Topup Expired',
   'Topup Refunded',
+
+  // Commission rates admin page (Phase 6 06-03, RATE-01/RATE-03 labels)
+  'Commission Rates',
+  'Rate',
+  'Set Rate',
+  'New Rate',
+  'Rate History',
 ] as const

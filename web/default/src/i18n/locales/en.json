@@ -5092,6 +5092,21 @@
     "Topup Failed": "Topup Failed",
     "Topup Expired": "Topup Expired",
     "Topup Refunded": "Topup Refunded",
-    "Unbilled Preview": "Unbilled Preview"
+    "Unbilled Preview": "Unbilled Preview",
+    "Commission Rates": "Commission Rates",
+    "Rate": "Rate",
+    "Set Rate": "Set Rate",
+    "New Rate": "New Rate",
+    "Rate History": "Rate History",
+    "Rate (bp)": "Rate (bp)",
+    "No rates configured": "No rates configured",
+    "No rate history": "No rate history",
+    "Rate updated": "Rate updated",
+    "Enter distributor ID": "Enter distributor ID",
+    "Enter rate in basis points": "Enter rate in basis points",
+    "Distributor ID cannot be empty": "Distributor ID cannot be empty",
+    "Rate cannot be empty": "Rate cannot be empty",
+    "Rate must be a non-negative integer": "Rate must be a non-negative integer",
+    "Operator": "Operator"
   }
 }
