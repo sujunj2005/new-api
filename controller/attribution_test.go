@@ -499,7 +499,9 @@ func TestAdminDistributorCustomers(t *testing.T) {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)
-		require.Equal(t, b7RowShape, keys)
+		expectedShape := append([]string(nil), b7RowShape...)
+		sort.Strings(expectedShape)
+		require.Equal(t, expectedShape, keys)
 	})
 
 	t.Run("Pagination", func(t *testing.T) {

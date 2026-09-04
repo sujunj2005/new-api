@@ -22,35 +22,29 @@ type distributorCustomerItem struct {
 	TotalCommissionCents int64  `json:"total_commission_cents"`
 }
 
-// GetDistributorCustomers B4 分销商客户列表（DistributorAuth）。
-// 服务端强制 WHERE inviter_id = 当前分销商（ROLE-02，不依赖前端隔离）。
+// listDistributorCustomerItems 按分销商 ID 分页列出其名下客户并聚合两列金额
+// （B4/B7 共用参数化实现，plan 6.1 G-1 抽取；distributorId 来源由调用方决定：
+// B4 强制会话收窄、B7 管理员侧取 path :id，本函数零权限语义）。
 // total_topup_cents 从 TopUp.Money 聚合（SUM*100，F4 佣金基数语义）。
-// total_commission_cents 由佣金流水金额聚合接线（契约附录 D5.3；正负相抵，reversal 为负数）。
-func GetDistributorCustomers(c *gin.Context) {
-	distributorId := c.GetInt("id")
-	pageInfo := common.GetPageQuery(c)
-
-	// 服务端强制归属过滤（ROLE-02）
+// total_commission_cents 由佣金流水金额聚合接线（契约附录 D5.3；正负相抵，reversal 为负数），
+// WHERE distributor_id = ? AND customer_id IN ? 双谓词限定防跨分销商读取（T-04-02-03）。
+func listDistributorCustomerItems(distributorId int, pageInfo *common.PageInfo) ([]distributorCustomerItem, int, error) {
 	var users []model.User
 	var total int64
 	if err := model.DB.Model(&model.User{}).
 		Where("inviter_id = ?", distributorId).
 		Count(&total).Error; err != nil {
-		common.ApiError(c, err)
-		return
+		return nil, 0, err
 	}
 	if err := model.DB.Where("inviter_id = ?", distributorId).
 		Order("id desc").
 		Limit(pageInfo.GetPageSize()).
 		Offset(pageInfo.GetStartIdx()).
 		Find(&users).Error; err != nil {
-		common.ApiError(c, err)
-		return
+		return nil, 0, err
 	}
 
-	// B4 佣金聚合接线（D5.3）：本页客户批量聚合佣金金额，
-	// WHERE distributor_id = 当前分销商 双谓词限定防跨分销商读取（T-04-02-03）；
-	// flows 金额列本就 int64 cents，直取无精度问题。
+	// 佣金聚合：本页客户批量聚合佣金金额；flows 金额列本就 int64 cents，直取无精度问题。
 	customerIds := make([]int, 0, len(users))
 	for _, u := range users {
 		customerIds = append(customerIds, u.Id)
@@ -88,8 +82,20 @@ func GetDistributorCustomers(c *gin.Context) {
 			TotalCommissionCents: commissionByCustomer[u.Id], // 聚合佣金金额直取，无流水为 0
 		})
 	}
+	return items, int(total), nil
+}
 
-	pageInfo.SetTotal(int(total))
+// GetDistributorCustomers B4 分销商客户列表（DistributorAuth）。
+// 服务端强制 WHERE inviter_id = 当前分销商（ROLE-02，不依赖前端隔离）。
+func GetDistributorCustomers(c *gin.Context) {
+	distributorId := c.GetInt("id")
+	pageInfo := common.GetPageQuery(c)
+	items, total, err := listDistributorCustomerItems(distributorId, pageInfo)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	pageInfo.SetTotal(total)
 	pageInfo.SetItems(items)
 	common.ApiSuccess(c, pageInfo)
 }

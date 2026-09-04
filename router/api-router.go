@@ -247,6 +247,8 @@ func SetApiRouter(router *gin.Engine) {
 		{
 			attributionRoute.POST("/bind", middleware.RootAuth(), controller.AdminBindAttribution)     // B2 POST /api/attribution/bind 管理员补绑
 			attributionRoute.GET("/changes", middleware.AdminAuth(), controller.GetAttributionChanges) // B3 GET /api/attribution/changes 归属审计查询
+			// B7 管理员查看任意分销商名下客户列表（契约附录 G，plan 6.1 G-1；行形状与 B4 逐字一致）
+			attributionRoute.GET("/distributor/:id/customers", middleware.AdminAuth(), controller.GetDistributorCustomersForAdmin)
 		}
 
 		// B 域：分销商侧接口（B4/B5/B6，DistributorAuth 精确匹配）

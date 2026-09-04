@@ -141,3 +141,28 @@ func GetAttributionChanges(c *gin.Context) {
 	pageInfo.SetItems(changes)
 	common.ApiSuccess(c, pageInfo)
 }
+
+// GetDistributorCustomersForAdmin B7 管理员查看任意分销商名下客户列表（AdminAuth）。
+// 契约附录 G（plan 6.1 G-1）：行形状与 B4 distributorCustomerItem 逐字一致，
+// 聚合查询参数化复用 B4 实现（listDistributorCustomerItems）；:id 取 path 参数，
+// 非数字 400（文案循 B5 同场景先例，不依赖 i18n 初始化）；权限由路由层中间件保证，
+// controller 零权限逻辑。
+func GetDistributorCustomersForAdmin(c *gin.Context) {
+	distributorId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "invalid distributor id",
+		})
+		return
+	}
+	pageInfo := common.GetPageQuery(c)
+	items, total, err := listDistributorCustomerItems(distributorId, pageInfo)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	pageInfo.SetTotal(total)
+	pageInfo.SetItems(items)
+	common.ApiSuccess(c, pageInfo)
+}
