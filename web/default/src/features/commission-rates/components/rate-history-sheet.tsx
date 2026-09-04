@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
@@ -57,24 +57,31 @@ export function RateHistorySheet({
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
+  // 请求序号守卫：仅最新一次请求允许写回状态，防止上一个目标的在途响应乱序覆盖新数据
+  const reqSeq = useRef(0)
 
   const load = useCallback(async () => {
     if (distributorId == null) return
+    const seq = ++reqSeq.current
     setLoading(true)
     try {
       const res = await fetchCommissionRateHistory(distributorId, page)
+      if (seq !== reqSeq.current) return
       if (res.success && res.data) {
         setRows(res.data.items ?? [])
         setTotal(res.data.total ?? 0)
       }
     } finally {
-      setLoading(false)
+      // 旧请求不得复位新请求持有的 loading 态
+      if (seq === reqSeq.current) {
+        setLoading(false)
+      }
     }
   }, [distributorId, page])
 
-  // 切换目标分销商时重置分页（load 依赖变化后自动重取）
+  // 关闭或切换目标分销商时重置分页与旧数据（对齐 customer-topups-dialog 关闭即重置语义）：
+  // 重开新分销商时 page 已为 1，只发一个干净请求，不携带旧页码
   useEffect(() => {
-    if (distributorId == null) return
     setPage(1)
     setRows([])
     setTotal(0)
