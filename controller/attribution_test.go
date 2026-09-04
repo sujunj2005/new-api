@@ -3,13 +3,18 @@ package controller
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"testing"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/middleware"
 	"github.com/QuantumNous/new-api/model"
 
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
@@ -368,4 +373,165 @@ func TestAdminBind_NotDistributorTarget(t *testing.T) {
 	// setupAdminBindFixture 预置 c1.InviterId=d1.Id；失败调用不应改动
 	// （注：c1.Id 是 Insert 后的真实 id，InviterId 在 setupAdminBindFixture 末尾被 Update 为 d1.Id）
 	require.Equal(t, c1.InviterId, reloaded.InviterId, "customer inviter_id should be unchanged after rejection")
+}
+
+// ==================== TestAdminDistributorCustomers（B7，plan 6.1 G-1） ====================
+
+// b7RowShape B7 行形状 = B4 distributorCustomerItem 冻结 json tag（契约附录 G：逐字一致）。
+var b7RowShape = []string{"id", "username", "display_name", "created_at", "total_topup_cents", "total_commission_cents"}
+
+// b7Page / b7Envelope B7 PageInfo 信封解析（items 保留原始 map 以断言行形状键集）。
+type b7Page struct {
+	Page     int              `json:"page"`
+	PageSize int              `json:"page_size"`
+	Total    int              `json:"total"`
+	Items    []map[string]any `json:"items"`
+}
+
+type b7Envelope struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Data    b7Page `json:"data"`
+}
+
+// seedB7Customer 直插一名归属客户（Create 不写 InviterId，事后 Update——setupAdminBindFixture 先例）。
+func seedB7Customer(t *testing.T, username string, inviterId int) *model.User {
+	t.Helper()
+	u := &model.User{
+		Username: username,
+		Password: "testpass1234",
+		Role:     common.RoleCommonUser,
+		Status:   common.UserStatusEnabled,
+		AffCode:  "B7" + username,
+	}
+	require.NoError(t, model.DB.Create(u).Error)
+	require.NoError(t, model.DB.Model(&model.User{}).Where("id = ?", u.Id).Update("inviter_id", inviterId).Error)
+	return u
+}
+
+// seedB7Topup 直插一张成功充值单（money 为 float 元，B4 聚合口径 SUM(money)*100）。
+func seedB7Topup(t *testing.T, userId int, tradeNo string, money float64) {
+	t.Helper()
+	require.NoError(t, model.DB.Create(&model.TopUp{
+		UserId:  userId,
+		Money:   money,
+		TradeNo: tradeNo,
+		Status:  common.TopUpStatusSuccess,
+	}).Error)
+}
+
+// newB7TestRouter gin test router：与 api-router.go 相同的 AdminAuth 挂载形态（B7）。
+func newB7TestRouter() *gin.Engine {
+	r := gin.New()
+	r.Use(sessions.Sessions("session", cookie.NewStore([]byte("b7-test-secret"))))
+	r.GET("/api/attribution/distributor/:id/customers", middleware.AdminAuth(), GetDistributorCustomersForAdmin)
+	return r
+}
+
+// b7RowByUsername 从 items 中取指定 username 的行。
+func b7RowByUsername(t *testing.T, items []map[string]any, username string) map[string]any {
+	t.Helper()
+	for _, it := range items {
+		if it["username"] == username {
+			return it
+		}
+	}
+	t.Fatalf("row %q not found in items: %v", username, items)
+	return nil
+}
+
+// b7Num 取行内数值字段（JSON 反序列化为 float64）。
+func b7Num(t *testing.T, row map[string]any, key string) float64 {
+	t.Helper()
+	v, ok := row[key].(float64)
+	require.True(t, ok, "row key %q must be numeric, got %v", key, row[key])
+	return v
+}
+
+// TestAdminDistributorCustomers B7 管理员查看分销商客户列表（plan 6.1 G-1，契约附录 G）。
+// admin 会话 → 返回指定分销商客户行（total_topup_cents/total_commission_cents 聚合值
+// 与 B4 同口径：SUM(money)*100 / SUM(amount_cents) 双谓词）；
+// role=5 → 拒绝（多形态断言，OQ-4 口径）；分页参数生效；:id 非数字 400。
+func TestAdminDistributorCustomers(t *testing.T) {
+	setupStatementQueryTestDB(t)
+
+	admin := seedStmtUserWithToken(t, "b7admin", common.RoleAdminUser, "b7-admin-token")
+	dist := seedStmtUserWithToken(t, "b7dist", common.RoleDistributorUser, "b7-dist-token")
+	other := seedStmtUserWithToken(t, "b7other", common.RoleDistributorUser, "b7-other-token")
+
+	c1 := seedB7Customer(t, "b7cust1", dist.Id)
+	c2 := seedB7Customer(t, "b7cust2", dist.Id)
+	c3 := seedB7Customer(t, "b7cust3", dist.Id)
+	unbound := seedB7Customer(t, "b7unbound", 0)
+
+	seedB7Topup(t, c1.Id, "B7-TP-1", 100)     // → 10000 cents
+	seedB7Topup(t, c3.Id, "B7-TP-3", 50.5)    // → 5050 cents
+	seedB7Topup(t, unbound.Id, "B7-TP-U", 777) // 非本分销商客户，任何视图都不得出现
+	seedStmtFlow(t, "B7-FL-1", model.CommissionFlowCommission, c1.Id, dist.Id, 500)
+	// 跨分销商谓词隔离：other 名下指向同客户的流水不得计入 dist 视图
+	seedStmtFlow(t, "B7-FL-DECOY", model.CommissionFlowCommission, c1.Id, other.Id, 999)
+
+	r := newB7TestRouter()
+	path := fmt.Sprintf("/api/attribution/distributor/%d/customers", dist.Id)
+
+	t.Run("AdminViewsAggregatedRows", func(t *testing.T) {
+		w := wdDo(r, "GET", path, "b7-admin-token", admin.Id, "")
+		require.Equal(t, http.StatusOK, w.Code, "body: %s", w.Body.String())
+		var resp b7Envelope
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+		require.True(t, resp.Success, "admin view must succeed, body: %s", w.Body.String())
+		require.Equal(t, 3, resp.Data.Total, "only distributor-owned customers counted")
+		require.Len(t, resp.Data.Items, 3)
+
+		row := b7RowByUsername(t, resp.Data.Items, c1.Username)
+		require.Equal(t, float64(c1.Id), b7Num(t, row, "id"))
+		require.InDelta(t, 10000, b7Num(t, row, "total_topup_cents"), 0.0001)
+		require.InDelta(t, 500, b7Num(t, row, "total_commission_cents"), 0.0001,
+			"decoy flow of other distributor must not leak into aggregation")
+
+		row2 := b7RowByUsername(t, resp.Data.Items, c2.Username)
+		require.InDelta(t, 0, b7Num(t, row2, "total_topup_cents"), 0.0001)
+		require.InDelta(t, 0, b7Num(t, row2, "total_commission_cents"), 0.0001)
+
+		// 行形状与 B4 distributorCustomerItem 冻结 json tag 逐字一致（附录 G）
+		keys := make([]string, 0, len(row))
+		for k := range row {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		require.Equal(t, b7RowShape, keys)
+	})
+
+	t.Run("Pagination", func(t *testing.T) {
+		w := wdDo(r, "GET", path+"?p=1&page_size=2", "b7-admin-token", admin.Id, "")
+		require.Equal(t, http.StatusOK, w.Code, "body: %s", w.Body.String())
+		var resp b7Envelope
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+		require.True(t, resp.Success)
+		require.Equal(t, 3, resp.Data.Total)
+		require.Len(t, resp.Data.Items, 2)
+		// order id desc（B4 同口径）：第一页应为 c3/c2
+		require.Equal(t, c3.Username, resp.Data.Items[0]["username"])
+		require.Equal(t, c2.Username, resp.Data.Items[1]["username"])
+
+		w2 := wdDo(r, "GET", path+"?p=2&page_size=2", "b7-admin-token", admin.Id, "")
+		require.Equal(t, http.StatusOK, w2.Code)
+		var resp2 b7Envelope
+		require.NoError(t, json.Unmarshal(w2.Body.Bytes(), &resp2))
+		require.True(t, resp2.Success)
+		require.Len(t, resp2.Data.Items, 1)
+		require.Equal(t, c1.Username, resp2.Data.Items[0]["username"])
+	})
+
+	t.Run("DistributorRejected", func(t *testing.T) {
+		// role=5 无权访问 admin 端点（多形态拒绝断言，OQ-4 口径：
+		// 阈值拒绝 200+success:false / 403 / 401 皆算拒——禁止数据泄漏是断言本体）
+		w := wdDo(r, "GET", path, "b7-dist-token", dist.Id, "")
+		wdRequireAuthRejection(t, w)
+	})
+
+	t.Run("InvalidDistributorId", func(t *testing.T) {
+		w := wdDo(r, "GET", "/api/attribution/distributor/abc/customers", "b7-admin-token", admin.Id, "")
+		require.Equal(t, http.StatusBadRequest, w.Code, "non-numeric :id must 400, body: %s", w.Body.String())
+	})
 }
