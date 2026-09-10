@@ -69,8 +69,17 @@ type topupVoidFixture struct {
 }
 
 // seedTopupVoidFixture 构造完整冲销前置链路；customerQuota 指定客户初始额度。
-// 原 commission 流水通过真实记账路径（model.RecordCommissionTx）产生。
+// 默认 Epay 渠道（Amount=1000 美元数、Money=100 元）；渠道矩阵专项用
+// seedTopupVoidFixtureWithTopUp 指定 provider/amount/money。
 func seedTopupVoidFixture(t *testing.T, customerQuota int) *topupVoidFixture {
+	return seedTopupVoidFixtureWithTopUp(t, customerQuota, model.PaymentProviderEpay, 1000, 100.00)
+}
+
+// seedTopupVoidFixtureWithTopUp 渠道矩阵 fixture：provider/amount/money 可指定。
+// 各渠道 Amount 语义不同（见 model 侧加账公式渠道矩阵）：
+// Creem 的 Amount=产品 quota 整数直存；Stripe 的 Money=折后美元（加账口径）、Amount=原价。
+// 原 commission 流水通过真实记账路径（model.RecordCommissionTx）产生（佣金基数恒为 Money）。
+func seedTopupVoidFixtureWithTopUp(t *testing.T, customerQuota int, provider string, amount int64, money float64) *topupVoidFixture {
 	t.Helper()
 	withCommissionEnabledForVoid(t, true)
 	seq := topupVoidSeq.Add(1)
@@ -110,11 +119,11 @@ func seedTopupVoidFixture(t *testing.T, customerQuota int) *topupVoidFixture {
 
 	f.TopUp = &model.TopUp{
 		UserId:          f.Customer.Id,
-		Amount:          1000, // 额度数 → 扣回 quota = 1000 × QuotaPerUnit
-		Money:           100.00,
+		Amount:          amount,
+		Money:           money,
 		TradeNo:         fmt.Sprintf("TV%d%d", time.Now().UnixNano(), seq),
-		PaymentProvider: model.PaymentProviderEpay,
-		PaymentMethod:   model.PaymentProviderEpay,
+		PaymentProvider: provider,
+		PaymentMethod:   provider,
 		CreateTime:      common.GetTimestamp(),
 		CompleteTime:    time.Date(2026, 8, 15, 12, 0, 0, 0, time.Local).Unix(),
 		Status:          common.TopUpStatusSuccess,
@@ -259,5 +268,40 @@ func TestTopupVoid(t *testing.T) {
 		require.NoError(t, model.DB.First(&customer, f.Customer.Id).Error)
 		wantDeduct := int(float64(f.TopUp.Amount) * common.QuotaPerUnit)
 		require.Equal(t, -wantDeduct, customer.Quota, "允许扣成负数（契约 C1，禁钳制）")
+	})
+
+	// 渠道矩阵专项（6.3 Fix 1）：作废扣回必须镜像各渠道加账公式，而非恒 Amount×QuotaPerUnit。
+	// 加账口径：Creem=裸 Amount（topup.go RechargeCreem）、Stripe=Money×QPU（topup.go Recharge）、
+	// Epay/Waffo/WaffoPancake=Amount×QPU。
+	t.Run("creem_void_deducts_bare_amount", func(t *testing.T) {
+		setupTopupVoidTestDB(t)
+		const initialQuota = 10_000_000
+		// Creem 下单时 Amount 直存产品 quota（整数），Money 仅为支付价、不参与入账
+		f := seedTopupVoidFixtureWithTopUp(t, initialQuota, model.PaymentProviderCreem, 1_500_000, 29.99)
+
+		resp := callVoidTopUp(t, f.TopUp.TradeNo, `{"reason":"Creem 订单退款"}`, f.Root.Id)
+		require.Equal(t, true, resp["success"], "message: %v", resp["message"])
+
+		var customer model.User
+		require.NoError(t, model.DB.First(&customer, f.Customer.Id).Error)
+		wantDeduct := int(f.TopUp.Amount) // 裸 Amount，非 ×QuotaPerUnit（镜像 RechargeCreem 加账口径）
+		require.Equal(t, initialQuota-wantDeduct, customer.Quota,
+			"Creem 作废扣回 = 裸 Amount；恒 Amount×QPU 公式会多扣 50 万倍")
+	})
+
+	t.Run("stripe_void_deducts_money_times_qpu", func(t *testing.T) {
+		setupTopupVoidTestDB(t)
+		const initialQuota = 60_000_000
+		// Stripe：Money=分组倍率折算后美元（加账口径），Amount=原价美元；构造 Money≠Amount
+		f := seedTopupVoidFixtureWithTopUp(t, initialQuota, model.PaymentProviderStripe, 100, 50.00)
+
+		resp := callVoidTopUp(t, f.TopUp.TradeNo, `{"reason":"Stripe 订单退款"}`, f.Root.Id)
+		require.Equal(t, true, resp["success"], "message: %v", resp["message"])
+
+		var customer model.User
+		require.NoError(t, model.DB.First(&customer, f.Customer.Id).Error)
+		wantDeduct := int(f.TopUp.Money * common.QuotaPerUnit) // Money×QPU（镜像 Recharge 加账口径）
+		require.Equal(t, initialQuota-wantDeduct, customer.Quota,
+			"Stripe 作废扣回 = Money×QuotaPerUnit（折扣口径），非 Amount×QuotaPerUnit")
 	})
 }
