@@ -17,8 +17,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import i18next from 'i18next'
+import { useNavigate } from '@tanstack/react-router'
 import { useState, useCallback } from 'react'
 import { toast } from 'sonner'
+
+import { getSelf } from '@/lib/api'
 
 import { requestCreemPayment, isApiSuccess } from '../api'
 
@@ -27,30 +30,57 @@ import { requestCreemPayment, isApiSuccess } from '../api'
  */
 export function useCreemPayment() {
   const [processing, setProcessing] = useState(false)
+  const navigate = useNavigate()
 
-  const processCreemPayment = useCallback(async (productId: string) => {
-    setProcessing(true)
-    try {
-      const response = await requestCreemPayment({
-        product_id: productId,
-        payment_method: 'creem',
-      })
-
-      if (isApiSuccess(response) && response.data?.checkout_url) {
-        window.open(response.data.checkout_url, '_blank')
-        toast.success(i18next.t('Redirecting to Creem checkout...'))
-        return true
+  const processCreemPayment = useCallback(
+    async (productId: string) => {
+      // Creem checkout requires a customer email (the API rejects empty ones).
+      // Guide users without a bound email to the profile page instead of
+      // letting the payment request fail with a vague error.
+      try {
+        const self = await getSelf()
+        const email = (self?.data as { email?: string } | undefined)?.email
+        if (!email) {
+          toast.error(i18next.t('Email required'), {
+            description: i18next.t(
+              'Creem payments require an email address. Please bind your email before purchasing.'
+            ),
+            action: {
+              label: i18next.t('Bind Email'),
+              onClick: () => navigate({ to: '/profile' }),
+            },
+            duration: 10000,
+          })
+          return false
+        }
+      } catch {
+        // If the profile lookup fails, proceed and let the payment API respond.
       }
 
-      toast.error(response.message || i18next.t('Payment request failed'))
-      return false
-    } catch (_error) {
-      toast.error(i18next.t('Payment request failed'))
-      return false
-    } finally {
-      setProcessing(false)
-    }
-  }, [])
+      setProcessing(true)
+      try {
+        const response = await requestCreemPayment({
+          product_id: productId,
+          payment_method: 'creem',
+        })
+
+        if (isApiSuccess(response) && response.data?.checkout_url) {
+          window.open(response.data.checkout_url, '_blank')
+          toast.success(i18next.t('Redirecting to Creem checkout...'))
+          return true
+        }
+
+        toast.error(response.message || i18next.t('Payment request failed'))
+        return false
+      } catch (_error) {
+        toast.error(i18next.t('Payment request failed'))
+        return false
+      } finally {
+        setProcessing(false)
+      }
+    },
+    [navigate]
+  )
 
   return { processing, processCreemPayment }
 }
