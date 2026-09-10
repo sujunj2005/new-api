@@ -98,9 +98,11 @@ export function transformFormDataToPayload(
   if (userId === undefined) {
     payload.role = role
   } else {
-    // For update: quota is adjusted atomically via /api/user/manage, not sent here
+    // For update: quota is adjusted atomically via /api/user/manage, not sent here;
+    // role 必须提交（后端 0=不修改占位，非 0 且合法值才变更）——否则编辑抽屉改角色永远不生效
     payload.group = data.group
     payload.remark = data.remark || undefined
+    payload.role = role
     payload.id = userId
   }
 
