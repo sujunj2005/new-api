@@ -47,6 +47,30 @@ var (
 	ErrTopUpStatusInvalid    = errors.New("topup status invalid")
 )
 
+// topupQuotaToCredit 渠道矩阵唯一事实源：按 PaymentProvider 返回该充值单应入账的 quota。
+// 人工补单（ManualCompleteTopUp）与作废扣回（VoidTopUp）必须共用本函数，
+// 保证「加账/扣回」口径一致（6.3 Fix 1）。各渠道下单时 Amount 语义不同：
+//   - Stripe: Amount=美元原价，Money=分组倍率折算后的美元 → quota = Money × QuotaPerUnit
+//     （加账锚点 model.Recharge：Money*QuotaPerUnit）
+//   - Creem:  Amount=产品 quota 整数直存（下单即定，无换算）→ quota = Amount 裸值
+//     （加账锚点 model.RechargeCreem：quota = topUp.Amount）
+//   - 其余渠道（Epay/Waffo/WaffoPancake 及未知渠道兜底）: Amount=美元数量
+//     → quota = Amount × QuotaPerUnit
+//     （加账锚点 controller.EpayNotify、model.RechargeWaffo / RechargeWaffoPancake）
+//
+// 精度：decimal 乘法后 IntPart 截断（沿用 ManualCompleteTopUp/RechargeWaffo 既有模式）。
+func topupQuotaToCredit(t *TopUp) int {
+	dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
+	switch t.PaymentProvider {
+	case PaymentProviderStripe:
+		return int(decimal.NewFromFloat(t.Money).Mul(dQuotaPerUnit).IntPart())
+	case PaymentProviderCreem:
+		return int(t.Amount) // 裸值：Creem 下单时 Amount 即 quota 整数，禁再乘 QuotaPerUnit
+	default:
+		return int(decimal.NewFromInt(t.Amount).Mul(dQuotaPerUnit).IntPart())
+	}
+}
+
 func (topUp *TopUp) Insert() error {
 	var err error
 	err = DB.Create(topUp).Error
@@ -353,17 +377,10 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 			return errors.New("订单状态不是待支付，无法补单")
 		}
 
-		// 计算应充值额度：
-		// - Stripe 订单：Money 代表经分组倍率换算后的美元数量，直接 * QuotaPerUnit
-		// - 其他订单（如易支付）：Amount 为美元数量，* QuotaPerUnit
-		if topUp.PaymentProvider == PaymentProviderStripe {
-			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-			quotaToAdd = int(decimal.NewFromFloat(topUp.Money).Mul(dQuotaPerUnit).IntPart())
-		} else {
-			dAmount := decimal.NewFromInt(topUp.Amount)
-			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-			quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).IntPart())
-		}
+		// 计算应充值额度：渠道矩阵唯一事实源（Stripe=Money×QPU、Creem=裸 Amount、
+		// 其余渠道=Amount×QPU），与作废扣回（VoidTopUp）共用（6.3 Fix 1）。
+		// 原实现缺 Creem 分支——人工补单 Creem 订单会按 Amount×QPU 超额入账 50 万倍。
+		quotaToAdd := topupQuotaToCredit(topUp)
 		if quotaToAdd <= 0 {
 			return errors.New("无效的充值额度")
 		}

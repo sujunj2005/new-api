@@ -6,7 +6,6 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 
-	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -62,7 +61,8 @@ func ReverseCommissionTx(tx *gorm.DB, tradeNo string, reason string) error {
 }
 
 // VoidTopUp 充值单作废（契约 01-CONTRACT.md 附录 C1 冻结：单事务同生共死）。
-// ① Status → refunded ② 扣回额度 Amount×QuotaPerUnit（与加账对称，允许扣成负数，禁钳制）
+// ① Status → refunded ② 扣回当初入账额度（渠道矩阵镜像各渠道加账公式，见 topupQuotaToCredit：
+// Creem 裸 Amount、Stripe Money×QuotaPerUnit、其余 Amount×QuotaPerUnit；允许扣成负数，禁钳制）
 // ③ ReverseCommissionTx 冲销（ErrAlreadyStatemented → 整体回滚，禁止半作废）
 // ④ 审计留痕在事务外（RecordLog 内部走全局 DB；且审计不应随回滚消失）。
 func VoidTopUp(tradeNo string, reason string, operatorId int) error {
@@ -125,10 +125,12 @@ func VoidTopUp(tradeNo string, reason string, operatorId int) error {
 			return err
 		}
 
-		// ② 扣回当初入账额度（与 ManualCompleteTopUp 等收敛点加账公式对称：Amount×QuotaPerUnit）。
+		// ② 扣回当初入账额度：调渠道矩阵唯一事实源 topupQuotaToCredit，镜像各渠道加账公式
+		// （Creem=裸 Amount、Stripe=Money×QuotaPerUnit、Epay/Waffo/WaffoPancake=Amount×QuotaPerUnit）。
+		// 原恒 Amount×QuotaPerUnit 公式对 Creem 订单多扣 50 万倍、对 Stripe 用错折扣口径（6.3 Fix 1）。
 		// 契约 C1：允许扣成负数——预扣信任额度可透支、SQL 无下限钳制，负余额后新请求被预扣检查自然拦截；
 		// 禁止 max(0,...) 钳制——那会破坏「扣回」语义且与加账不对称。
-		quotaToDeduct := int(decimal.NewFromInt(topUp.Amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart())
+		quotaToDeduct := topupQuotaToCredit(topUp)
 		if err := tx.Model(&User{}).Where("id = ?", topUp.UserId).Update("quota", gorm.Expr("quota - ?", quotaToDeduct)).Error; err != nil {
 			return err
 		}
