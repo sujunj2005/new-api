@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Crown, CalendarClock, Package } from 'lucide-react'
+import { useNavigate } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -35,6 +36,7 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { useSystemConfig } from '@/hooks/use-system-config'
+import { getSelf } from '@/lib/api'
 import { formatQuota } from '@/lib/format'
 import { DEFAULT_CURRENCY_CONFIG } from '@/stores/system-config-store'
 
@@ -70,6 +72,7 @@ interface Props {
 
 export function SubscriptionPurchaseDialog(props: Props) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const { currency } = useSystemConfig()
   const [paying, setPaying] = useState(false)
   const [selectedEpayMethod, setSelectedEpayMethod] = useState('')
@@ -137,6 +140,29 @@ export function SubscriptionPurchaseDialog(props: Props) {
   }
 
   const handlePayCreem = async () => {
+    // Creem checkout requires a customer email (the API rejects empty ones).
+    // Mirror of the wallet hook guard: guide users without a bound email to
+    // the profile page instead of letting the payment request fail vaguely.
+    try {
+      const self = await getSelf()
+      const email = (self?.data as { email?: string } | undefined)?.email
+      if (!email) {
+        toast.error(t('Email required'), {
+          description: t(
+            'Creem payments require an email address. Please bind your email before purchasing.'
+          ),
+          action: {
+            label: t('Bind Email'),
+            onClick: () => navigate({ to: '/profile' }),
+          },
+          duration: 10000,
+        })
+        return
+      }
+    } catch {
+      // If the profile lookup fails, proceed and let the payment API respond.
+    }
+
     setPaying(true)
     try {
       const res = await paySubscriptionCreem({ plan_id: plan.id })

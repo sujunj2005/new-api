@@ -617,4 +617,8 @@ export const STATIC_I18N_KEYS = [
   'Delta cannot be empty',
   'Delta must be a non-zero integer',
   'Statement adjusted',
+
+  // Creem payment email guard (Phase 6 plan 6.3, wallet hook + subscription dialog)
+  'Email required',
+  'Creem payments require an email address. Please bind your email before purchasing.',
 ] as const
