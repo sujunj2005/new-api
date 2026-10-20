@@ -6,11 +6,13 @@ import (
 	"testing"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/pkg/billingexpr"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/ratio_setting"
 	"github.com/QuantumNous/new-api/types"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -127,4 +129,31 @@ func TestTestAllChannelsRejectsExistingActiveTask(t *testing.T) {
 	require.Equal(t, http.StatusConflict, recorder.Code)
 	require.Contains(t, recorder.Body.String(), existing.TaskID)
 	require.Contains(t, recorder.Body.String(), "已有通道测试任务正在运行或等待中")
+}
+
+func TestNormalizeChannelTestEndpoint(t *testing.T) {
+	// 未指定端点时，图片生成模型自动补全为 image-generation
+	require.Equal(t, string(constant.EndpointTypeImageGeneration),
+		normalizeChannelTestEndpoint(nil, "glm-image", ""))
+	require.Equal(t, string(constant.EndpointTypeImageGeneration),
+		normalizeChannelTestEndpoint(nil, "dall-e-3", ""))
+
+	// 显式指定的端点原样透传（优先级最高）
+	require.Equal(t, string(constant.EndpointTypeOpenAI),
+		normalizeChannelTestEndpoint(nil, "glm-image", string(constant.EndpointTypeOpenAI)))
+
+	// 普通聊天模型不补全
+	require.Empty(t, normalizeChannelTestEndpoint(nil, "gpt-4o", ""))
+
+	// compact 后缀模型 → responses compact
+	require.Equal(t, string(constant.EndpointTypeOpenAIResponseCompact),
+		normalizeChannelTestEndpoint(nil, ratio_setting.WithCompactModelSuffix("zz-model"), ""))
+
+	// Codex 渠道 → responses
+	require.Equal(t, string(constant.EndpointTypeOpenAIResponse),
+		normalizeChannelTestEndpoint(&model.Channel{Type: constant.ChannelTypeCodex}, "codex-mini-latest", ""))
+
+	// 空白字符串视同未指定
+	require.Empty(t,
+		normalizeChannelTestEndpoint(&model.Channel{Type: constant.ChannelTypeOpenAI}, "gpt-4o", "  "))
 }

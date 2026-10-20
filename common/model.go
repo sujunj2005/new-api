@@ -16,6 +16,7 @@ var (
 		"prefix:imagen-",
 		"flux-",
 		"flux.1-",
+		"glm-image",
 	}
 	OpenAITextModels = []string{
 		"gpt-",

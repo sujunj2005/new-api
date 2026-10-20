@@ -24,6 +24,8 @@ func sendStreamData(c *gin.Context, info *relaycommon.RelayInfo, data string, fo
 		return nil
 	}
 
+	data = common.SanitizeErrorChunkData(data)
+
 	if !forceFormat && !thinkToContent {
 		return helper.StringData(c, data)
 	}

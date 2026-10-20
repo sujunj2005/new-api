@@ -196,6 +196,46 @@ func TestGetUserModelsFiltersByRequestedGroup(t *testing.T) {
 	require.Empty(t, decodeUserModelsResponse(t, vipRecorder))
 }
 
+func TestGetUserModelsExcludesImageGenerationModels(t *testing.T) {
+	db := setupModelListControllerTestDB(t)
+	require.NoError(t, db.Create(&model.User{
+		Id:       1004,
+		Username: "playground-image-filter-user",
+		Password: "password",
+		Group:    "default",
+		Status:   common.UserStatusEnabled,
+	}).Error)
+	require.NoError(t, db.Create(&[]model.Ability{
+		{Group: "default", Model: "zz-chat-model", ChannelId: 1, Enabled: true},
+		{Group: "default", Model: "glm-image", ChannelId: 1, Enabled: true},
+		{Group: "default", Model: "dall-e-3", ChannelId: 1, Enabled: true},
+		{Group: "default", Model: "gpt-image-1", ChannelId: 1, Enabled: true},
+		{Group: "default", Model: "flux-1.1-pro", ChannelId: 1, Enabled: true},
+	}).Error)
+
+	// 指定分组分支：图片模型被过滤
+	groupRecorder := httptest.NewRecorder()
+	groupContext, _ := gin.CreateTestContext(groupRecorder)
+	groupContext.Request = httptest.NewRequest(http.MethodGet, "/api/user/models?group=default", nil)
+	groupContext.Set("id", 1004)
+
+	GetUserModels(groupContext)
+
+	groupModels := decodeUserModelsResponse(t, groupRecorder)
+	require.ElementsMatch(t, []string{"zz-chat-model"}, groupModels)
+
+	// 未指定分组分支（全部可用分组聚合）：图片模型同样被过滤
+	allRecorder := httptest.NewRecorder()
+	allContext, _ := gin.CreateTestContext(allRecorder)
+	allContext.Request = httptest.NewRequest(http.MethodGet, "/api/user/models", nil)
+	allContext.Set("id", 1004)
+
+	GetUserModels(allContext)
+
+	allModels := decodeUserModelsResponse(t, allRecorder)
+	require.ElementsMatch(t, []string{"zz-chat-model"}, allModels)
+}
+
 func TestListModelsIncludesTieredBillingModel(t *testing.T) {
 	withSelfUseModeDisabled(t)
 	withTieredBillingConfig(t, map[string]string{

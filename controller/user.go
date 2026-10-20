@@ -478,7 +478,7 @@ func GetSelf(c *gin.Context) {
 		"discord_id":        user.DiscordId,
 		"oidc_id":           user.OidcId,
 		"wechat_id":         user.WeChatId,
-		"telegram_id":      user.TelegramId,
+		"telegram_id":       user.TelegramId,
 		"group":             user.Group,
 		"quota":             user.Quota,
 		"used_quota":        user.UsedQuota,
@@ -597,6 +597,21 @@ func generateDefaultSidebarConfig(userRole int) string {
 	return string(configBytes)
 }
 
+// filterChatCapableModels 过滤掉图片生成模型（如 glm-image、dall-e-3、gpt-image-1）。
+// 该接口的消费方均为聊天场景（Playground 模型下拉、总览页快速开始示例），而图片
+// 模型只响应 /v1/images/generations，出现在聊天下拉中会导致客户误选后必然失败。
+// /v1/models 走 ListModels，不受此过滤影响，图片 API 调用方仍可正常获取模型列表。
+func filterChatCapableModels(models []string) []string {
+	filtered := make([]string, 0, len(models))
+	for _, m := range models {
+		if common.IsImageGenerationModel(m) {
+			continue
+		}
+		filtered = append(filtered, m)
+	}
+	return filtered
+}
+
 func GetUserModels(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -622,7 +637,7 @@ func GetUserModels(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,
 			"message": "",
-			"data":    model.GetGroupEnabledModels(group),
+			"data":    filterChatCapableModels(model.GetGroupEnabledModels(group)),
 		})
 		return
 	}
@@ -630,6 +645,9 @@ func GetUserModels(c *gin.Context) {
 	var models []string
 	for group := range groups {
 		for _, g := range model.GetGroupEnabledModels(group) {
+			if common.IsImageGenerationModel(g) {
+				continue
+			}
 			if !common.StringsContains(models, g) {
 				models = append(models, g)
 			}

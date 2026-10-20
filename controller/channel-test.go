@@ -52,6 +52,11 @@ func normalizeChannelTestEndpoint(channel *model.Channel, modelName, endpointTyp
 	if channel != nil && channel.Type == constant.ChannelTypeCodex {
 		return string(constant.EndpointTypeOpenAIResponse)
 	}
+	// 图片生成模型仅响应 /v1/images/generations，未显式指定端点时自动补全，
+	// 避免渠道测试误走聊天接口
+	if common.IsImageGenerationModel(modelName) {
+		return string(constant.EndpointTypeImageGeneration)
+	}
 	return normalized
 }
 
