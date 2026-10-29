@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
@@ -106,6 +107,30 @@ func authenticateUser(c *gin.Context, minRole int) {
 			return
 		}
 	}
+	// 会话生命周期校验：仅针对 Cookie 会话（走到此处且 useAccessToken == false
+	// 时 username 必非 nil）；Authorization 访问令牌链路不读写时间戳、不做校验。
+	if !useAccessToken {
+		now := time.Now().Unix()
+		if reason, expired := sessionLifetimeExpired(session, now); expired {
+			common.SysLog(fmt.Sprintf("session expired (reason=%s, user_id=%v)", reason, id))
+			if err := clearSessionCookie(session); err != nil {
+				common.SysLog("failed to clear expired session cookie: " + err.Error())
+			}
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"message": common.TranslateMessage(c, i18n.MsgAuthNotLoggedIn),
+			})
+			c.Abort()
+			return
+		}
+		// 滑动续期节流：last_active 距今满 60 秒才回写一次，避免每请求重写 Cookie
+		if now-sessionValueInt64(session.Get(common.SessionKeyLastActive)) >= common.SessionTouchIntervalSeconds {
+			session.Set(common.SessionKeyLastActive, now)
+			if err := session.Save(); err != nil {
+				common.SysLog("failed to touch session last_active: " + err.Error())
+			}
+		}
+	}
 	// get header New-Api-User
 	apiUserIdStr := c.Request.Header.Get("New-Api-User")
 	if apiUserIdStr == "" {
@@ -171,6 +196,57 @@ func authenticateUser(c *gin.Context, minRole int) {
 	// 的精确门控——admin/root 虽能走过 authHelper(c, RoleDistributorUser) 阈值（5≥1），
 	// 但 is_distributor=false；真正进入分销商视角须经过 DistributorAuth 二次精确校验。
 	c.Set("is_distributor", role.(int) == common.RoleDistributorUser)
+}
+
+// sessionValueInt64 兼容会话值类型：cookie store 经 gob 往返恒为 int64，
+// 其余分支防御历史 int 值与未来更换 store（如 JSON 序列化产出 float64）的场景。
+func sessionValueInt64(value interface{}) int64 {
+	switch v := value.(type) {
+	case int64:
+		return v
+	case int:
+		return int64(v)
+	case int32:
+		return int64(v)
+	case float64:
+		return int64(v)
+	default:
+		return 0
+	}
+}
+
+// sessionLifetimeExpired 判定会话是否已超时。四种情况判为过期：
+// 时间戳缺失（部署前签发的旧会话）、闲置满 30 分钟、登录满 12 小时、
+// last_active 晚于当前时间（时钟回拨/篡改）。返回 reason 便于日志归因。
+func sessionLifetimeExpired(session sessions.Session, now int64) (string, bool) {
+	loginAt := sessionValueInt64(session.Get(common.SessionKeyLoginAt))
+	lastActive := sessionValueInt64(session.Get(common.SessionKeyLastActive))
+	if loginAt == 0 || lastActive == 0 {
+		return "missing_timestamp", true
+	}
+	if lastActive > now {
+		return "future_last_active", true
+	}
+	if now-lastActive >= common.SessionIdleTimeoutSeconds {
+		return "idle_timeout", true
+	}
+	if now-loginAt >= common.SessionAbsoluteTimeoutSeconds {
+		return "absolute_timeout", true
+	}
+	return "", false
+}
+
+// clearSessionCookie 清空会话值并让浏览器立即删除会话 Cookie（MaxAge: -1）。
+func clearSessionCookie(session sessions.Session) error {
+	session.Clear()
+	session.Options(sessions.Options{
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteStrictMode,
+	})
+	return session.Save()
 }
 
 // authHelper authenticates the user (via authenticateUser) and, on success,

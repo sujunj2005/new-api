@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
@@ -133,11 +134,15 @@ func recordLoginAudit(user *model.User, c *gin.Context) {
 func setupLogin(user *model.User, c *gin.Context) {
 	model.UpdateUserLastLoginAt(user.Id)
 	session := sessions.Default(c)
+	now := time.Now().Unix()
 	session.Set("id", user.Id)
 	session.Set("username", user.Username)
 	session.Set("role", user.Role)
 	session.Set("status", user.Status)
 	session.Set("group", user.Group)
+	// 会话生命周期基准：login_at 为 12 小时绝对上限，last_active 为 30 分钟闲置判定
+	session.Set(common.SessionKeyLoginAt, now)
+	session.Set(common.SessionKeyLastActive, now)
 	err := session.Save()
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgUserSessionSaveFailed)
@@ -161,6 +166,14 @@ func setupLogin(user *model.User, c *gin.Context) {
 func Logout(c *gin.Context) {
 	session := sessions.Default(c)
 	session.Clear()
+	// MaxAge: -1 让浏览器立即删除会话 Cookie，避免退出后仍保留空会话凭证直到关闭浏览器
+	session.Options(sessions.Options{
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteStrictMode,
+	})
 	err := session.Save()
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{

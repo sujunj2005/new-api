@@ -21,7 +21,6 @@ import { ArrowRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
-import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
 
 interface TagItem {
@@ -52,9 +51,6 @@ interface HeroNewProps {
 
 export function HeroNew({ isAuthenticated = false }: HeroNewProps) {
   const { t } = useTranslation()
-  const { status } = useStatus()
-  const docsUrl =
-    (status?.docs_link as string | undefined) || 'https://docs.newapi.pro'
   const { systemName } = useSystemConfig()
 
   return (
@@ -105,16 +101,13 @@ export function HeroNew({ isAuthenticated = false }: HeroNewProps) {
               <ArrowRight className='ml-1.5 size-4' />
             </Button>
           ) : (
-            <>
-              <Button
-                className='h-12 rounded-xl bg-gradient-to-r from-landing-primary to-landing-primary-hover px-7 text-[15px] font-semibold text-landing-primary-foreground shadow-sm'
-                render={<Link to='/sign-up' />}
-              >
-                {t('Get Started Free')}
-                <ArrowRight className='ml-1.5 size-4' />
-              </Button>
-             
-            </>
+            <Button
+              className='h-12 rounded-xl bg-gradient-to-r from-landing-primary to-landing-primary-hover px-7 text-[15px] font-semibold text-landing-primary-foreground shadow-sm'
+              render={<Link to='/sign-up' />}
+            >
+              {t('Get Started Free')}
+              <ArrowRight className='ml-1.5 size-4' />
+            </Button>
           )}
         </div>
 

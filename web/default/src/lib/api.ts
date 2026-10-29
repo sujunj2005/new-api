@@ -65,7 +65,8 @@ api.get = ((url: string, config: ApiRequestConfig = {}) => {
   const key = `${url}?${params}`
 
   // Return existing in-flight request if available
-  if (inFlightGet.has(key)) return inFlightGet.get(key)!
+  const inFlight = inFlightGet.get(key)
+  if (inFlight) return inFlight
 
   // Create new request and clean up after completion
   const req = originalGet(url, config).finally(() => inFlightGet.delete(key))
@@ -107,8 +108,24 @@ api.interceptors.response.use(
       } catch {
         /* empty */
       }
+      try {
+        localStorage.removeItem('uid')
+      } catch {
+        /* empty */
+      }
 
-      if (!skip) {
+      // 会话超时统一出口：跳转不受 skipErrorHandler 门控（getSelf 等请求
+      // 以 skipErrorHandler: true 发出，必须同样回到登录页），仅 toast 维持原门控
+      const { pathname, search } = window.location
+      const authPaths = ['/sign-in', '/sign-up', '/otp', '/oauth', '/setup']
+      const onAuthPage = authPaths.some(
+        (p) => pathname === p || pathname.startsWith(`${p}/`)
+      )
+      if (!onAuthPage) {
+        window.location.replace(
+          `/sign-in?redirect=${encodeURIComponent(pathname + search)}`
+        )
+      } else if (!skip) {
         toast.error(t('Session expired!'))
       }
     } else if (!skip) {

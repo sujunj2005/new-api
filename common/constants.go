@@ -75,6 +75,16 @@ var DefaultCollapseSidebar = false // default value of collapse sidebar
 var SessionSecret = uuid.New().String()
 var CryptoSecret = uuid.New().String()
 
+// 会话生命周期键名与阈值（银行式会话管理：30 分钟闲置失效 + 12 小时绝对上限 + 60 秒续期节流）。
+// controller 写入与 middleware 校验共用，避免两处数值漂移。
+const (
+	SessionKeyLoginAt             = "login_at"
+	SessionKeyLastActive          = "last_active"
+	SessionIdleTimeoutSeconds     = 30 * 60
+	SessionAbsoluteTimeoutSeconds = 12 * 60 * 60
+	SessionTouchIntervalSeconds   = 60
+)
+
 var OptionMap map[string]string
 var OptionMapRWMutex sync.RWMutex
 

@@ -36,7 +36,6 @@ export let API = axios.create({
   },
 });
 
-
 function redirectToOAuthUrl(url, options = {}) {
   const { openInNewTab = false } = options;
   const targetUrl = typeof url === 'string' ? url : url.toString();
@@ -48,7 +47,6 @@ function redirectToOAuthUrl(url, options = {}) {
 
   window.location.assign(targetUrl);
 }
-
 
 function patchAPIInstance(instance) {
   const originalGet = instance.get.bind(instance);
@@ -80,6 +78,31 @@ function patchAPIInstance(instance) {
 
 patchAPIInstance(API);
 
+function registerInterceptors(instance) {
+  instance.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      // 401 统一出口：清理本地登录态并跳转登录页。该分支必须位于
+      // skipErrorHandler 提前返回之前——skip 请求 401 时原本既不清理
+      // 也不跳转，用户会停留在已登录页面持续报错。
+      if (error.response && error.response.status === 401) {
+        localStorage.removeItem('user');
+        localStorage.removeItem('uid');
+        if (window.location.pathname !== '/login') {
+          window.location.assign('/login?expired=true');
+        }
+        return Promise.reject(error);
+      }
+      // 如果请求配置中显式要求跳过全局错误处理，则不弹出默认错误提示
+      if (error.config && error.config.skipErrorHandler) {
+        return Promise.reject(error);
+      }
+      showError(error);
+      return Promise.reject(error);
+    },
+  );
+}
+
 export function updateAPI() {
   API = axios.create({
     baseURL: import.meta.env.VITE_REACT_APP_SERVER_URL
@@ -92,19 +115,11 @@ export function updateAPI() {
   });
 
   patchAPIInstance(API);
+  // 拦截器必须随实例重建重新注册，否则登录后 401 统一出口失效
+  registerInterceptors(API);
 }
 
-API.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    // 如果请求配置中显式要求跳过全局错误处理，则不弹出默认错误提示
-    if (error.config && error.config.skipErrorHandler) {
-      return Promise.reject(error);
-    }
-    showError(error);
-    return Promise.reject(error);
-  },
-);
+registerInterceptors(API);
 
 // playground
 

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/gin-contrib/sessions"
@@ -47,6 +48,10 @@ func performHeaderNavRequest(t *testing.T, handler gin.HandlerFunc, authenticate
 		session.Set("id", 1)
 		session.Set("status", common.UserStatusEnabled)
 		session.Set("group", "default")
+		// 会话生命周期契约（见 auth_test.go）：登录会话必须携带时间戳
+		now := time.Now().Unix()
+		session.Set(common.SessionKeyLoginAt, now)
+		session.Set(common.SessionKeyLastActive, now)
 		if err := session.Save(); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"success": false})
 			return

@@ -188,7 +188,7 @@ func main() {
 	store := cookie.NewStore([]byte(common.SessionSecret))
 	store.Options(sessions.Options{
 		Path:     "/",
-		MaxAge:   2592000, // 30 days
+		MaxAge:   0, // 0 表示浏览器会话级 Cookie：不写入 Max-Age/Expires，关闭全部窗口即销毁凭证
 		HttpOnly: true,
 		Secure:   false,
 		SameSite: http.SameSiteStrictMode,
