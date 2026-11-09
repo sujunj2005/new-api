@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import { FileWarning } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
@@ -26,6 +27,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { isHttpUrl, isLikelyHtml } from '@/lib/content-format'
+import { cn } from '@/lib/utils'
 
 import type { LegalDocumentResponse } from './types'
 
@@ -35,6 +37,11 @@ type LegalDocumentProps = {
   fetchDocument: () => Promise<LegalDocumentResponse>
   emptyMessage: string
 }
+
+const LEGAL_DOCUMENTS = [
+  { key: 'user-agreement', href: '/user-agreement', label: 'User Agreement' },
+  { key: 'privacy-policy', href: '/privacy-policy', label: 'Privacy Policy' },
+] as const
 
 export function LegalDocument({
   title,
@@ -54,10 +61,30 @@ export function LegalDocument({
   const isUrl = hasContent && isHttpUrl(rawContent)
   const success = data?.success ?? false
 
+  const tabs = (
+    <nav className='border-border flex items-center gap-4 border-b'>
+      {LEGAL_DOCUMENTS.map((doc) => (
+        <Link
+          key={doc.key}
+          to={doc.href}
+          className={cn(
+            '-mb-px border-b-2 pb-2 text-sm font-medium transition-colors',
+            queryKey === doc.key
+              ? 'border-primary text-foreground'
+              : 'text-muted-foreground hover:text-foreground border-transparent'
+          )}
+        >
+          {t(doc.label)}
+        </Link>
+      ))}
+    </nav>
+  )
+
   if (isLoading) {
     return (
       <PublicLayout>
         <div className='mx-auto flex max-w-4xl flex-col gap-4 py-12'>
+          {tabs}
           <Skeleton className='h-8 w-[45%]' />
           <Skeleton className='h-4 w-full' />
           <Skeleton className='h-4 w-[90%]' />
@@ -70,7 +97,8 @@ export function LegalDocument({
   if (!success || !hasContent) {
     return (
       <PublicLayout>
-        <div className='mx-auto max-w-2xl py-12'>
+        <div className='mx-auto max-w-2xl space-y-6 py-12'>
+          {tabs}
           <Card className='border-dashed'>
             <CardHeader className='flex flex-row items-center gap-4'>
               <div className='bg-muted rounded-lg p-2'>
@@ -92,7 +120,8 @@ export function LegalDocument({
   if (isUrl) {
     return (
       <PublicLayout>
-        <div className='mx-auto max-w-2xl py-12'>
+        <div className='mx-auto max-w-2xl space-y-6 py-12'>
+          {tabs}
           <Card>
             <CardHeader>
               <CardTitle>{title}</CardTitle>
@@ -124,6 +153,7 @@ export function LegalDocument({
   return (
     <PublicLayout>
       <div className='mx-auto max-w-4xl space-y-6 py-12'>
+        {tabs}
         <div className='space-y-2'>
           <h1 className='text-3xl font-semibold tracking-tight'>{title}</h1>
         </div>

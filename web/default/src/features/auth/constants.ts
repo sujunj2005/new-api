@@ -76,3 +76,9 @@ export const PASSWORD_RESET_COUNTDOWN = 30 // seconds
 // ============================================================================
 
 export const OAUTH_BIND_STORAGE_KEY = 'oauth:binding:result'
+
+// ============================================================================
+// Login Constants
+// ============================================================================
+
+export const LAST_LOGIN_USERNAME_STORAGE_KEY = 'auth:last-username'
